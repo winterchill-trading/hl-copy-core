@@ -1,7 +1,7 @@
 (library
  (name hl_copy_core)
  (public_name hl-copy-core)
- (libraries core fixed-decimal market-data)
+ (libraries core fixed-decimal exchange-core hl-protocol market-data)
  (inline_tests
   (flags -source-tree-root .))
  (preprocess
