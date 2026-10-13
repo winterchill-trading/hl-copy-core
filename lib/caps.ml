@@ -97,7 +97,7 @@ let clamp_magnitude ~current ~target ~cap_size =
   else allowed
 ;;
 
-let apply t (ctx : Context.t) ~spec ~target =
+let clamp t (ctx : Context.t) ~target =
   let reasons = Queue.create () in
   let allowed =
     match t.allowlist with
@@ -105,7 +105,7 @@ let apply t (ctx : Context.t) ~spec ~target =
     | Some l -> List.mem l ctx.symbol ~equal:Symbol.equal
   in
   if not allowed
-  then { Decision.target = ctx.current; order = None; reasons = [ Not_allowlisted ] }
+  then ctx.current, [ Reason.Not_allowlisted ]
   else (
     let target =
       match t.max_daily_loss with
@@ -150,30 +150,29 @@ let apply t (ctx : Context.t) ~spec ~target =
             Usd.(of_float (limit *. to_float ctx.equity) - ctx.other_notional)
             [@alert "-lossy"]
           in
-          let cap_size =
-            if Usd.is_positive room then P.div room ctx.mark else Size.zero
-          in
+          let cap_size = if Usd.is_positive room then P.div room ctx.mark else Size.zero in
           let clamped = clamp_magnitude ~current:ctx.current ~target ~cap_size in
           if not (Size.equal clamped target)
           then Queue.enqueue reasons (Reason.Leverage { wanted; limit });
           clamped)
       | _ -> target
     in
-    let order =
-      match Rounding.delta spec ~current:ctx.current ~target with
-      | None ->
-        if not (Size.equal target ctx.current) then Queue.enqueue reasons Reason.Below_lot;
-        None
-      | Some d ->
-        let full_close = Size.is_zero target in
-        let n = notional d ctx.mark in
-        if (not full_close) && Usd.(n < t.min_order_notional)
-        then (
-          Queue.enqueue
-            reasons
-            (Reason.Below_min_notional { notional = n; min = t.min_order_notional });
-          None)
-        else Some d
-    in
-    { Decision.target; order; reasons = Queue.to_list reasons })
+    target, Queue.to_list reasons)
+;;
+
+let order t ~spec ~mark ~current ~target =
+  match Rounding.delta spec ~current ~target with
+  | None -> None, if Size.equal target current then None else Some Reason.Below_lot
+  | Some d ->
+    let full_close = Size.is_zero target in
+    let n = notional d mark in
+    if (not full_close) && Usd.(n < t.min_order_notional)
+    then None, Some (Reason.Below_min_notional { notional = n; min = t.min_order_notional })
+    else Some d, None
+;;
+
+let apply t (ctx : Context.t) ~spec ~target =
+  let target, reasons = clamp t ctx ~target in
+  let order, why = order t ~spec ~mark:ctx.mark ~current:ctx.current ~target in
+  { Decision.target; order; reasons = reasons @ Option.to_list why }
 ;;
