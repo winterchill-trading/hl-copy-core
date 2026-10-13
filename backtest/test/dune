@@ -1,0 +1,15 @@
+(library
+ (name hl_copy_backtest_test)
+ (libraries
+  core
+  core_unix
+  async
+  market-data
+  hl-protocol
+  hl-copy-core
+  hl-leaderboard
+  hl-copy-backtest)
+ (inline_tests
+  (flags -source-tree-root .))
+ (preprocess
+  (pps ppx_jane)))
