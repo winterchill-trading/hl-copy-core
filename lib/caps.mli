@@ -1,11 +1,13 @@
 (** Per-follower risk caps, applied to a scaled target before an order is planned.
 
-    Caps only ever limit growth: a cap never forces the follower below the position it
-    already holds on the same side, so mark moves alone never create trades. In order:
+    Apart from the daily loss limit, caps only limit growth: a cap never forces the
+    follower below the position it already holds on the same side, so mark moves alone
+    never create trades. In order:
 
     + Allowlist: a symbol not on [allowlist] (when one is set) is not traded at all.
-    + Daily loss: once [daily_pnl <= -max_daily_loss] the follower may only reduce or
-      close, not grow or flip.
+    + Daily loss: once [daily_pnl <= -max_daily_loss] every target is zero: the follower
+      closes out and stays flat until the next day starts ({!Mirror.start_day}, at the UTC
+      day boundary or on a manual resume). This is the one cap that forces trades.
     + Notional per symbol: [|target| * mark <= max_notional_per_symbol].
     + Leverage: [(other_notional + |target| * mark) <= max_leverage * equity].
     + The order [target - current] is truncated to the lot; an order under one lot or

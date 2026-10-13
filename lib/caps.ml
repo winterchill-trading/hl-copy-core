@@ -110,17 +110,12 @@ let clamp t (ctx : Context.t) ~target =
     let target =
       match t.max_daily_loss with
       | Some limit when Usd.(ctx.daily_pnl <= neg limit) ->
-        let reduced =
-          if same_side ctx.current target
-          then if Size.(abs target <= abs ctx.current) then target else ctx.current
-          else Size.zero
-        in
-        if not (Size.equal reduced target)
+        if not (Size.is_zero target)
         then
           Queue.enqueue
             reasons
             (Reason.Daily_loss_reached { daily_pnl = ctx.daily_pnl; limit });
-        reduced
+        Size.zero
       | _ -> target
     in
     let price_positive = Price.is_positive ctx.mark in

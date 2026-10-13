@@ -35,7 +35,7 @@ let%expect_test "allowlist" =
   [%expect {| ((target 0.1) (order ()) (reasons (Not_allowlisted))) |}]
 ;;
 
-let%expect_test "daily loss: reduce and close only" =
+let%expect_test "daily loss: flatten and stay flat" =
   let caps = { Caps.none with max_daily_loss = Some (Usd.of_string "100") } in
   run caps (ctx ~current:"0.1" ~daily_pnl:"-150" ()) "0.2";
   run caps (ctx ~current:"0.1" ~daily_pnl:"-150" ()) "0.05";
@@ -43,9 +43,10 @@ let%expect_test "daily loss: reduce and close only" =
   run caps (ctx ~current:"0.1" ~daily_pnl:"-99" ()) "0.2";
   [%expect
     {|
-    ((target 0.1) (order ())
+    ((target 0) (order (-0.1))
      (reasons ((Daily_loss_reached (daily_pnl -150) (limit 100)))))
-    ((target 0.05) (order (-0.05)) (reasons ()))
+    ((target 0) (order (-0.1))
+     (reasons ((Daily_loss_reached (daily_pnl -150) (limit 100)))))
     ((target 0) (order (-0.1))
      (reasons ((Daily_loss_reached (daily_pnl -150) (limit 100)))))
     ((target 0.2) (order (0.1)) (reasons ()))
