@@ -8,15 +8,46 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # The repository holds two packages and hl-copy-backtest depends on
+      # hl-leaderboard, which depends on hl-copy-core, so the core library is
+      # built on its own from a directory holding only its opam file.
+      - run: mkdir -p _ox-core && cp hl-copy-core.opam _ox-core/
       - uses: winterchill-trading/infra/.github/actions/ox-setup@main
         with:
+          working-directory: _ox-core
           pins: |
             fixed-decimal https://github.com/winterchill-trading/fixed-decimal.git
             exchange-core https://github.com/winterchill-trading/exchange-core.git
             parquet https://github.com/winterchill-trading/parquet.git
             hl-protocol https://github.com/winterchill-trading/hl-protocol.git
             market-data https://github.com/winterchill-trading/market-data.git
-      - run: opam exec -- dune build
-      - run: opam exec -- dune test
+      - run: opam exec -- dune build --only-packages hl-copy-core @install
+      - run: opam exec -- dune build --only-packages hl-copy-core @runtest
+  backtest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Same layout as exchange-core's engine job: the cached switch is built
+      # for hl-copy-backtest's opam file alone (hl-copy-core and hl-leaderboard
+      # come in as pins), then hl-copy-core is re-pinned to this checkout,
+      # which rebuilds hl-leaderboard against it, and only the backtest package
+      # is built so dune links the installed hl-copy-core.
+      - run: mkdir -p _ox-backtest && cp hl-copy-backtest.opam _ox-backtest/
+      - uses: winterchill-trading/infra/.github/actions/ox-setup@main
+        with:
+          working-directory: _ox-backtest
+          pins: |
+            fixed-decimal https://github.com/winterchill-trading/fixed-decimal.git
+            exchange-core https://github.com/winterchill-trading/exchange-core.git
+            parquet https://github.com/winterchill-trading/parquet.git
+            market-data https://github.com/winterchill-trading/market-data.git
+            hl-protocol https://github.com/winterchill-trading/hl-protocol.git
+            venue-net https://github.com/winterchill-trading/venue-net.git
+            hl-client https://github.com/winterchill-trading/hl-client.git
+            hl-copy-core https://github.com/winterchill-trading/hl-copy-core.git
+            hl-leaderboard https://github.com/winterchill-trading/hl-leaderboard.git
+      - run: opam pin add hl-copy-core . --yes
+      - run: opam exec -- dune build --only-packages hl-copy-backtest @install
+      - run: opam exec -- dune build --only-packages hl-copy-backtest @runtest
   obj-magic:
     uses: winterchill-trading/infra/.github/workflows/obj-magic.yml@main
