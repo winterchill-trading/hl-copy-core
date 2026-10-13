@@ -3,6 +3,8 @@
  (libraries
   core
   core_unix
+  core_unix.filename_unix
+  yojson
   async
   market-data
   hl-protocol
