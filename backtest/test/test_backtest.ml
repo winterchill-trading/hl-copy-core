@@ -22,7 +22,8 @@ let%expect_test "one round trip, no costs: a tenth of the leader's size and pnl"
      (turnover 10500) (orders 2) (unfilled_orders 0) (leader_changes 2)
      (changes_traded 2) (changes_capped 0) (changes_skipped 0) (skip_rate 0)
      (reasons ()) (leader_return 0) (leader_max_drawdown 0)
-     (leader_fill_pnl 5000) (positions ()) (curve ()))
+     (leader_fill_pnl 5000) (leader_mtm_pnl 5000) (leader_mtm_return 0.05)
+     (positions ()) (curve ()))
     |}]
 ;;
 
@@ -37,7 +38,8 @@ let%expect_test "fees and slippage" =
      (unrealized 0) (fees 4.724775) (turnover 10499.5) (orders 2)
      (unfilled_orders 0) (leader_changes 2) (changes_traded 2) (changes_capped 0)
      (changes_skipped 0) (skip_rate 0) (reasons ()) (leader_return 0)
-     (leader_max_drawdown 0) (leader_fill_pnl 5000) (positions ()) (curve ()))
+     (leader_max_drawdown 0) (leader_fill_pnl 5000) (leader_mtm_pnl 5000)
+     (leader_mtm_return 0.05) (positions ()) (curve ()))
     |}]
 ;;
 
@@ -51,7 +53,7 @@ let%expect_test "slippage beyond the IOC limit leaves every order unfilled" =
      (orders 1) (unfilled_orders 1) (leader_changes 2) (changes_traded 1)
      (changes_capped 0) (changes_skipped 0) (skip_rate 0) (reasons ())
      (leader_return 0) (leader_max_drawdown 0) (leader_fill_pnl 5000)
-     (positions ()) (curve ()))
+     (leader_mtm_pnl 5000) (leader_mtm_return 0.05) (positions ()) (curve ()))
     |}]
 ;;
 
@@ -70,7 +72,8 @@ let%expect_test "changes under the minimum notional are skipped" =
      (turnover 10010) (orders 2) (unfilled_orders 0) (leader_changes 3)
      (changes_traded 2) (changes_capped 0) (changes_skipped 1)
      (skip_rate 0.333333) (reasons ((below_min_notional 1))) (leader_return 0)
-     (leader_max_drawdown 0) (leader_fill_pnl 0) (positions ()) (curve ()))
+     (leader_max_drawdown 0) (leader_fill_pnl 0) (leader_mtm_pnl 0)
+     (leader_mtm_return 0) (positions ()) (curve ()))
     |}]
 ;;
 
@@ -111,7 +114,7 @@ let%expect_test "equity ratio rescales on the follower's marked equity" =
      (turnover 17200) (orders 3) (unfilled_orders 0) (leader_changes 3)
      (changes_traded 3) (changes_capped 0) (changes_skipped 0) (skip_rate 0)
      (reasons ()) (leader_return 0) (leader_max_drawdown 0) (leader_fill_pnl 0)
-     (positions ()) (curve ()))
+     (leader_mtm_pnl 10000) (leader_mtm_return 0.1) (positions ()) (curve ()))
     |}];
   print_s [%sexp (r.curve : Backtest.Point.t list)];
   [%expect {|
@@ -134,6 +137,7 @@ let%expect_test "the daily loss cap closes the follower until the next day" =
      (turnover 13500) (orders 3) (unfilled_orders 0) (leader_changes 4)
      (changes_traded 3) (changes_capped 1) (changes_skipped 0) (skip_rate 0)
      (reasons ((daily_loss 1))) (leader_return 0) (leader_max_drawdown 0)
-     (leader_fill_pnl 0) (positions ((BTC 0.09))) (curve ()))
+     (leader_fill_pnl 0) (leader_mtm_pnl 10000) (leader_mtm_return 0.1)
+     (positions ((BTC 0.09))) (curve ()))
     |}]
 ;;

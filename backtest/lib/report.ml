@@ -64,6 +64,8 @@ let result_to_json ~curve (r : Result.t) =
      ; "leader_return", `Float r.leader_return
      ; "leader_max_drawdown", `Float r.leader_max_drawdown
      ; "leader_fill_pnl", usd r.leader_fill_pnl
+     ; "leader_mtm_pnl", usd r.leader_mtm_pnl
+     ; "leader_mtm_return", `Float r.leader_mtm_return
      ; ( "positions"
        , `Assoc
            (List.map r.positions ~f:(fun (s, size) ->
@@ -122,6 +124,8 @@ let results_schema : (int * Result.t) Parquet.Schema.t =
     ; Column.float "leader_return" (r (fun x -> x.Result.leader_return))
     ; Column.float "leader_max_drawdown" (r (fun x -> x.Result.leader_max_drawdown))
     ; money "leader_fill_pnl" (fun x -> x.leader_fill_pnl)
+    ; money "leader_mtm_pnl" (fun x -> x.leader_mtm_pnl)
+    ; Column.float "leader_mtm_return" (r (fun x -> x.Result.leader_mtm_return))
     ]
 ;;
 
@@ -207,9 +211,13 @@ let summary (r : Result.t) =
         (pct r.skip_rate)
     ; sprintf "notes           %s" reasons
     ; sprintf
-        "leader          return %s, max drawdown %s, fills pnl %s"
+        "leader          curve return %s, max drawdown %s"
         (pct r.leader_return)
         (pct r.leader_max_drawdown)
+    ; sprintf
+        "leader fills    marked pnl %s (%s of its equity), closed pnl - fees %s"
+        (money r.leader_mtm_pnl)
+        (pct r.leader_mtm_return)
         (money r.leader_fill_pnl)
     ]
   ^ "\n"
@@ -218,15 +226,16 @@ let summary (r : Result.t) =
 let table results =
   let header =
     "| Rank | Leader | Window (days) | Follower pnl | Return | Max drawdown | Fees | \
-     Turnover | Orders | Changes | Skipped | Leader return | Leader max drawdown |\n\
+     Turnover | Orders | Changes | Skipped | Leader marked return | Leader curve return | \
+     Leader curve max drawdown |\n\
      | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | \
-     ---: |\n"
+     ---: | ---: |\n"
   in
   header
   ^ String.concat
       (List.mapi results ~f:(fun i (r : Result.t) ->
          sprintf
-           "| %d | `%s` | %.1f | %s | %s | %s | %s | %s | %d | %d | %s | %s | %s |\n"
+           "| %d | `%s` | %.1f | %s | %s | %s | %s | %s | %d | %d | %s | %s | %s | %s |\n"
            (i + 1)
            (Address.to_string r.leader)
            (Float.of_int (r.end_ms - r.start_ms) /. 86_400_000.)
@@ -238,6 +247,7 @@ let table results =
            r.orders
            r.leader_changes
            (pct r.skip_rate)
+           (pct r.leader_mtm_return)
            (pct r.leader_return)
            (pct r.leader_max_drawdown)))
 ;;

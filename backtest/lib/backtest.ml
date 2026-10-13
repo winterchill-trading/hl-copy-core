@@ -54,6 +54,8 @@ module Result = struct
     ; leader_return : float
     ; leader_max_drawdown : float
     ; leader_fill_pnl : Usd.t
+    ; leader_mtm_pnl : Usd.t
+    ; leader_mtm_return : float
     ; positions : (Symbol.t * Size.t) list
     ; curve : Point.t list
     }
@@ -269,6 +271,25 @@ let run (params : Params.t) (input : Input.t) =
     | first :: _, Some last when Float.(first > 0.) -> (last /. first) -. 1.
     | _ -> 0.
   in
+  let leader_mtm_pnl =
+    let positions =
+      List.fold
+        input.fills
+        ~init:(Map.empty (module Symbol))
+        ~f:(fun acc (f : Fill.t) ->
+          Map.update acc f.symbol ~f:(fun p ->
+            Pnl.Position.apply_fill (Option.value p ~default:Pnl.Position.flat) f))
+    in
+    let end_value, _, _, _ =
+      book_totals ~start_equity:Usd.zero { books with positions }
+    in
+    end_value
+  in
+  let leader_mtm_return =
+    match leader_values with
+    | first :: _ when Float.(first > 0.) -> Usd.to_float leader_mtm_pnl /. first
+    | _ -> 0.
+  in
   let pnl = Usd.(end_equity - start_equity) in
   let leader_changes = List.length changes in
   { Result.leader = input.leader
@@ -305,6 +326,8 @@ let run (params : Params.t) (input : Input.t) =
   ; leader_fill_pnl =
       Usd.sum
         (List.map input.fills ~f:(fun (f : Fill.t) -> Usd.(f.closed_pnl - f.fee)))
+  ; leader_mtm_pnl
+  ; leader_mtm_return
   ; positions =
       Map.to_alist books.positions
       |> List.filter_map ~f:(fun (s, (p : Pnl.Position.t)) ->

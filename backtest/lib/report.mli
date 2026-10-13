@@ -10,7 +10,8 @@
     (TIMESTAMP_NS), [start_equity], [end_equity], [pnl], [return], [max_drawdown],
     [realized], [unrealized], [fees], [turnover], [orders], [unfilled_orders],
     [leader_changes], [changes_traded], [changes_capped], [changes_skipped], [skip_rate],
-    [leader_return], [leader_max_drawdown], [leader_fill_pnl].
+    [leader_return], [leader_max_drawdown], [leader_fill_pnl], [leader_mtm_pnl],
+    [leader_mtm_return].
 
     [<out>/curves.parquet]: [address], [time] (TIMESTAMP_NS), [equity], [leader_equity],
     one row per curve point.

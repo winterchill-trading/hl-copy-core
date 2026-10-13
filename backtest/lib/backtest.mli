@@ -78,6 +78,11 @@ module Result : sig
     ; leader_max_drawdown : float
     ; leader_fill_pnl : Hl_copy_core.Usd.t
     (** the leader's [closedPnl - fee] over the replayed fills *)
+    ; leader_mtm_pnl : Hl_copy_core.Usd.t
+    (** the leader's fills booked like the follower's (average entry, real fees, marked
+        at the same final prices): what the follower copies, before scaling and costs *)
+    ; leader_mtm_return : float
+    (** [leader_mtm_pnl] over the leader's curve equity at [start_ms]; 0 without one *)
     ; positions : (Market_data.Symbol.t * Market_data.Size.t) list (** at the end *)
     ; curve : Point.t list (** one point per leader change, oldest first *)
     }
