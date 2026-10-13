@@ -110,6 +110,25 @@ module Decision : sig
   [@@deriving sexp_of]
 end
 
+(** The allowlist, daily-loss, notional and leverage steps: the capped target and the
+    caps that changed it. *)
+val clamp
+  :  t
+  -> Context.t
+  -> target:Market_data.Size.t
+  -> Market_data.Size.t * Reason.t list
+
+(** The lot and minimum-notional step: the order from [current] to [target], or [None]
+    with the reason it was dropped (no reason when [target = current]). *)
+val order
+  :  t
+  -> spec:Rounding.Spec.t
+  -> mark:Market_data.Price.t
+  -> current:Market_data.Size.t
+  -> target:Market_data.Size.t
+  -> Market_data.Size.t option * Reason.t option
+
+(** [clamp], then [order] from [ctx.current]. *)
 val apply
   :  t
   -> Context.t
