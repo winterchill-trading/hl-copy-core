@@ -31,3 +31,23 @@
   hl-protocol
   market-data
   (core_bench :with-test)))
+
+(package
+ (name hl-copy-backtest)
+ (synopsis
+  "Backtest of copying a Hyperliquid leader from hl-leaderboard's recorded fills and equity curves")
+ (depends
+  (ocaml
+   (>= 5.2))
+  dune
+  core
+  core_unix
+  async
+  yojson
+  ppx_jane
+  fixed-decimal
+  parquet
+  market-data
+  hl-protocol
+  hl-copy-core
+  hl-leaderboard))
