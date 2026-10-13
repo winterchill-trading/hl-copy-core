@@ -52,9 +52,7 @@ let%test_unit "a leader that ends flat leaves the follower flat, and fees follow
     ~sexp_of:[%sexp_of: Fill.t list]
     ~trials:200
     ~f:(fun fills ->
-      let r =
-        Backtest.run (params ~slippage_bps:2. ~fee_bps:4.5 ()) (input fills)
-      in
+      let r = Backtest.run (params ~slippage_bps:2. ~fee_bps:4.5 ()) (input fills) in
       [%test_result: (Market_data.Symbol.t * Size.t) list] r.positions ~expect:[];
       (* Each fill's fee is rounded to 10^-8 on its own. *)
       let expected = Usd.to_float r.turnover *. 4.5 /. 10_000. in

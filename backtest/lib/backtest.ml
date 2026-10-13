@@ -172,7 +172,10 @@ let run (params : Params.t) (input : Input.t) =
         Mirror.on_order_closed mirror o.cloid, books)
       else (
         let notional = Caps.notional o.size price in
-        let fee = (Usd.of_float [@alert "-lossy"]) (Usd.to_float notional *. params.fee_bps /. 10_000.) in
+        let fee =
+          (Usd.of_float [@alert "-lossy"])
+            (Usd.to_float notional *. params.fee_bps /. 10_000.)
+        in
         c.turnover <- Usd.(c.turnover + notional);
         let before =
           Option.value (Map.find books.positions o.symbol) ~default:Pnl.Position.flat
@@ -192,7 +195,8 @@ let run (params : Params.t) (input : Input.t) =
         let fill = { fill with closed_pnl = Usd.(after.realized - before.realized) } in
         let mirror = Mirror.on_follower_fill mirror fill in
         let mirror = Mirror.on_order_closed mirror o.cloid in
-        mirror, { books with positions = Map.set books.positions ~key:o.symbol ~data:after })
+        ( mirror
+        , { books with positions = Map.set books.positions ~key:o.symbol ~data:after } ))
   in
   let step (mirror, books, day, curve) (change : Leader_change.t) =
     let mirror, day =
@@ -207,7 +211,10 @@ let run (params : Params.t) (input : Input.t) =
       Mirror.on_follower_equity mirror (equity ~start_equity books)
       |> Fn.flip
            Mirror.on_leader_equity
-           (Option.value_map leader_equity ~default:Usd.zero ~f:(Usd.of_float [@alert "-lossy"]))
+           (Option.value_map
+              leader_equity
+              ~default:Usd.zero
+              ~f:(Usd.of_float [@alert "-lossy"]))
     in
     let mirror, plan =
       Mirror.on_leader_position_change
@@ -319,13 +326,11 @@ let run (params : Params.t) (input : Input.t) =
       (if leader_changes = 0
        then 0.
        else Float.of_int c.skipped /. Float.of_int leader_changes)
-  ; reasons =
-      Hashtbl.to_alist c.reasons |> List.sort ~compare:[%compare: string * int]
+  ; reasons = Hashtbl.to_alist c.reasons |> List.sort ~compare:[%compare: string * int]
   ; leader_return
   ; leader_max_drawdown = max_drawdown leader_values
   ; leader_fill_pnl =
-      Usd.sum
-        (List.map input.fills ~f:(fun (f : Fill.t) -> Usd.(f.closed_pnl - f.fee)))
+      Usd.sum (List.map input.fills ~f:(fun (f : Fill.t) -> Usd.(f.closed_pnl - f.fee)))
   ; leader_mtm_pnl
   ; leader_mtm_return
   ; positions =

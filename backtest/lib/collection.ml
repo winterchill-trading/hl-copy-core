@@ -23,9 +23,7 @@ let load_one dir address =
 ;;
 
 let specs ?meta inputs =
-  let inferred =
-    Specs.infer (List.concat_map inputs ~f:(fun (i : Input.t) -> i.fills))
-  in
+  let inferred = Specs.infer (List.concat_map inputs ~f:(fun (i : Input.t) -> i.fills)) in
   match meta with
   | None -> inferred
   | Some meta -> Specs.combine ~meta:(Specs.of_meta meta) ~inferred

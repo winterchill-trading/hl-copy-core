@@ -6,15 +6,15 @@ module Spec = Hl_copy_core.Rounding.Spec
 type t = Spec.t Hl_copy_core.Mirror.Symbol_map.t [@@deriving sexp_of]
 
 let of_meta (meta : Hl_protocol.Meta.t) =
-  List.fold meta.universe ~init:(Map.empty (module Symbol)) ~f:(fun acc m ->
-    Map.set acc ~key:m.name ~data:(Spec.of_asset_meta m))
+  List.fold
+    meta.universe
+    ~init:(Map.empty (module Symbol))
+    ~f:(fun acc m -> Map.set acc ~key:m.name ~data:(Spec.of_asset_meta m))
 ;;
 
 let load_meta path =
   Or_error.try_with_join (fun () ->
-    Yojson.Safe.from_file path
-    |> Hl_protocol.Meta.t_of_yojson
-    |> Or_error.return)
+    Yojson.Safe.from_file path |> Hl_protocol.Meta.t_of_yojson |> Or_error.return)
   |> Or_error.tag ~tag:path
 ;;
 
@@ -34,11 +34,14 @@ let decimals_of size =
 ;;
 
 let inferred_sz_decimals fills =
-  List.fold fills ~init:(Map.empty (module Symbol)) ~f:(fun acc (f : Hl_copy_core.Fill.t) ->
-    let d = decimals_of f.size in
-    Map.update acc f.symbol ~f:(function
-      | None -> d
-      | Some prev -> Int.max prev d))
+  List.fold
+    fills
+    ~init:(Map.empty (module Symbol))
+    ~f:(fun acc (f : Hl_copy_core.Fill.t) ->
+      let d = decimals_of f.size in
+      Map.update acc f.symbol ~f:(function
+        | None -> d
+        | Some prev -> Int.max prev d))
 ;;
 
 let infer fills =

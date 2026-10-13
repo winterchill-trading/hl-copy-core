@@ -10,14 +10,14 @@
       curve at that time) are given to the mirror.
     + The mirror plans the follower's IOC orders (scaling, caps, lot and tick rounding).
     + Each order fills in full at the change's price moved [slippage_bps] against the
-      follower, if that is inside the order's IOC limit; otherwise it is not filled.
-      Every fill pays [fee_bps] of its notional.
+      follower, if that is inside the order's IOC limit; otherwise it is not filled. Every
+      fill pays [fee_bps] of its notional.
     + One equity curve point is recorded.
 
     Positions are marked to the leader's fill prices, so a coin's mark moves only when the
-    leader trades it. Funding, liquidations, partial fills and latency are not modelled;
-    a change that the mirror plans nothing for is counted as skipped when a cap, the lot
-    or the minimum notional caused it. *)
+    leader trades it. Funding, liquidations, partial fills and latency are not modelled; a
+    change that the mirror plans nothing for is counted as skipped when a cap, the lot or
+    the minimum notional caused it. *)
 
 open! Core
 
@@ -29,7 +29,8 @@ module Params : sig
     ; slippage_bps : float
     (** execution price distance from the leader's price, against the follower *)
     ; fee_bps : float
-    ; specs : Hl_copy_core.Rounding.Spec.t Hl_copy_core.Mirror.Symbol_map.t (** see {!Specs} *)
+    ; specs : Hl_copy_core.Rounding.Spec.t Hl_copy_core.Mirror.Symbol_map.t
+    (** see {!Specs} *)
     }
   [@@deriving sexp_of]
 
@@ -79,8 +80,8 @@ module Result : sig
     ; leader_fill_pnl : Hl_copy_core.Usd.t
     (** the leader's [closedPnl - fee] over the replayed fills *)
     ; leader_mtm_pnl : Hl_copy_core.Usd.t
-    (** the leader's fills booked like the follower's (average entry, real fees, marked
-        at the same final prices): what the follower copies, before scaling and costs *)
+    (** the leader's fills booked like the follower's (average entry, real fees, marked at
+        the same final prices): what the follower copies, before scaling and costs *)
     ; leader_mtm_return : float
     (** [leader_mtm_pnl] over the leader's curve equity at [start_ms]; 0 without one *)
     ; positions : (Market_data.Symbol.t * Market_data.Size.t) list (** at the end *)

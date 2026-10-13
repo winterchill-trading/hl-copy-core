@@ -18,7 +18,12 @@ let address_arg =
 let usd_arg = Command.Arg_type.create Usd.of_string
 
 let load_follow = function
-  | None -> Ok (Follower_config.create ~follower:placeholder_follower ~leader:placeholder_follower ())
+  | None ->
+    Ok
+      (Follower_config.create
+         ~follower:placeholder_follower
+         ~leader:placeholder_follower
+         ())
   | Some path ->
     Or_error.try_with_join (fun () ->
       Follower_config.of_file_contents (In_channel.read_all path))
@@ -53,9 +58,9 @@ let command =
          "-config"
          (optional string)
          ~doc:
-           "FILE follow sexp (mode, caps, IOC slippage) as the API writes it; the \
-            leader in it is ignored (default: equity ratio, no caps but the 10 USD \
-            minimum order, 20 bps IOC limit)"
+           "FILE follow sexp (mode, caps, IOC slippage) as the API writes it; the leader \
+            in it is ignored (default: equity ratio, no caps but the 10 USD minimum \
+            order, 20 bps IOC limit)"
      and start_equity =
        flag
          "-equity"

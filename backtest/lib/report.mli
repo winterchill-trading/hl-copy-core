@@ -1,10 +1,9 @@
 (** Backtest output: JSON, Parquet and a text summary.
 
-    [<out>/backtest.json]:
-    [{"generated_at", "params": {...}, "results": [{...}, ...]}], one result per leader in
-    ranking order, each with the fields of {!Backtest.Result.t} (amounts as numbers,
-    times in epoch ms, [reasons] as an object) and, when [~curve:true], its [curve] as
-    [[time_ms, equity, leader_equity], ...].
+    [<out>/backtest.json]: [{"generated_at", "params": {...}, "results": [{...}, ...]}],
+    one result per leader in ranking order, each with the fields of {!Backtest.Result.t}
+    (amounts as numbers, times in epoch ms, [reasons] as an object) and, when
+    [~curve:true], its [curve] as [[time_ms, equity, leader_equity], ...].
 
     [<out>/results.parquet]: one row per leader: [rank], [address], [start], [end]
     (TIMESTAMP_NS), [start_equity], [end_equity], [pnl], [return], [max_drawdown],
@@ -43,8 +42,8 @@ val write
   -> Backtest.Result.t list
   -> unit
 
-(** A few lines for one leader: window, equity, pnl, drawdown, costs, orders, skips and the
-    leader's own curve over the same window. *)
+(** A few lines for one leader: window, equity, pnl, drawdown, costs, orders, skips and
+    the leader's own curve over the same window. *)
 val summary : Backtest.Result.t -> string
 
 (** A Markdown table, one row per result, in the given order. *)

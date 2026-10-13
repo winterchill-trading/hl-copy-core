@@ -59,13 +59,13 @@ let params
 let print_summary (r : Backtest.Result.t) =
   let r =
     { r with
-        curve = ([] : Backtest.Point.t list)
-      ; return_ = Float.round_decimal r.return_ ~decimal_digits:6
-      ; max_drawdown = Float.round_decimal r.max_drawdown ~decimal_digits:6
-      ; skip_rate = Float.round_decimal r.skip_rate ~decimal_digits:6
-      ; leader_return = Float.round_decimal r.leader_return ~decimal_digits:6
-      ; leader_max_drawdown = Float.round_decimal r.leader_max_drawdown ~decimal_digits:6
-      }
+      curve = ([] : Backtest.Point.t list)
+    ; return_ = Float.round_decimal r.return_ ~decimal_digits:6
+    ; max_drawdown = Float.round_decimal r.max_drawdown ~decimal_digits:6
+    ; skip_rate = Float.round_decimal r.skip_rate ~decimal_digits:6
+    ; leader_return = Float.round_decimal r.leader_return ~decimal_digits:6
+    ; leader_max_drawdown = Float.round_decimal r.leader_max_drawdown ~decimal_digits:6
+    }
   in
   print_s [%sexp (r : Backtest.Result.t)]
 ;;

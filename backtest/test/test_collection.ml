@@ -61,7 +61,9 @@ let write_collection dir =
   let%bind () =
     L.Raw_log.append (L.Layout.portfolio dir b) ~recv_ts (portfolio ~equity:"200000.0")
   in
-  L.Progress.save (L.Layout.progress dir) { started = recv_ts; candidates = [ a; b ]; collected = [ a; b ] }
+  L.Progress.save
+    (L.Layout.progress dir)
+    { started = recv_ts; candidates = [ a; b ]; collected = [ a; b ] }
 ;;
 
 (* Without a meta the lots are inferred from these few round sizes (1 BTC, 1 ETH), far
@@ -96,14 +98,16 @@ let%expect_test "rank a collection and write the reports" =
   let results = Ranking.run params inputs in
   print_string (Report.table results);
   (* B: 10 ETH short on 200000 is 0.5 ETH for the follower, losing 0.5 * 400. *)
-  [%expect {|
+  [%expect
+    {|
     | Rank | Leader | Window (days) | Follower pnl | Return | Max drawdown | Fees | Turnover | Orders | Changes | Skipped | Leader marked return | Leader curve return | Leader curve max drawdown |
     | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
     | 1 | `0x00000000000000000000000000000000000000aa` | 0.0 | 500.00 | 5.00% | 0.00% | 0.00 | 10500.00 | 2 | 2 | 0.00% | 5.00% | 0.00% | 0.00% |
     | 2 | `0x00000000000000000000000000000000000000bb` | 0.0 | -200.00 | -2.00% | 2.00% | 0.00 | 4200.00 | 2 | 2 | 0.00% | -2.00% | 0.00% | 0.00% |
     |}];
   print_string (Report.summary (List.hd_exn results));
-  [%expect {|
+  [%expect
+    {|
     leader          0x00000000000000000000000000000000000000aa
     window          2026-09-21T15:13 to 2026-09-21T16:13 UTC
     equity          10000.00 -> 10500.00 (pnl 500.00, 5.00%)
@@ -116,18 +120,18 @@ let%expect_test "rank a collection and write the reports" =
     leader          curve return 0.00%, max drawdown 0.00%
     leader fills    marked pnl 5000.00 (5.00% of its equity), closed pnl - fees 0.00
     |}];
-  Report.write
-    ~dir:(dir ^/ "out")
-    ~generated_at:Time_ns.epoch
-    ~curve:true
-    params
-    results;
+  Report.write ~dir:(dir ^/ "out") ~generated_at:Time_ns.epoch ~curve:true params results;
   let%bind files = Sys.readdir (dir ^/ "out") in
   print_s [%sexp (List.sort (Array.to_list files) ~compare:String.compare : string list)];
   [%expect {| (backtest.json curves.parquet results.parquet) |}];
   let json = Yojson.Safe.from_file (dir ^/ "out" ^/ "backtest.json") in
   let open Yojson.Safe.Util in
-  json |> member "results" |> index 0 |> member "curve" |> Yojson.Safe.to_string |> print_endline;
+  json
+  |> member "results"
+  |> index 0
+  |> member "curve"
+  |> Yojson.Safe.to_string
+  |> print_endline;
   [%expect {| [[1790003600000,10000.0,100000.0],[1790007200000,10500.0,100000.0]] |}];
   return ()
 ;;

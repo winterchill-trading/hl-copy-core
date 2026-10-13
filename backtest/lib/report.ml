@@ -69,8 +69,7 @@ let result_to_json ~curve (r : Result.t) =
      ; ( "positions"
        , `Assoc
            (List.map r.positions ~f:(fun (s, size) ->
-              ( Market_data.Symbol.to_string s
-              , `Float (Market_data.Size.to_float size) ))) )
+              Market_data.Symbol.to_string s, `Float (Market_data.Size.to_float size))) )
      ]
      @
      if curve
@@ -85,7 +84,8 @@ let result_to_json ~curve (r : Result.t) =
 
 let to_json ~generated_at ~curve params results =
   `Assoc
-    [ "generated_at", `String (Time_ns.to_string_iso8601_basic generated_at ~zone:Time_float.Zone.utc)
+    [ ( "generated_at"
+      , `String (Time_ns.to_string_iso8601_basic generated_at ~zone:Time_float.Zone.utc) )
     ; "params", params_to_json params
     ; "results", `List (List.map results ~f:(result_to_json ~curve))
     ]
@@ -99,7 +99,9 @@ let with_tmp path ~f =
 
 let results_schema : (int * Result.t) Parquet.Schema.t =
   let r f (_, x) = f x in
-  let money name (f : Result.t -> Usd.t) = Column.float name (r (fun x -> Usd.to_float (f x))) in
+  let money name (f : Result.t -> Usd.t) =
+    Column.float name (r (fun x -> Usd.to_float (f x)))
+  in
   Parquet.Schema.create
     [ Column.int32 "rank" fst
     ; Column.utf8 "address" (r (fun x -> Address.to_string x.Result.leader))
@@ -161,7 +163,8 @@ let write ~dir ~generated_at ~curve params results =
   let json = dir ^/ "backtest.json" in
   Out_channel.write_all
     (json ^ ".tmp")
-    ~data:(Yojson.Safe.pretty_to_string (to_json ~generated_at ~curve params results) ^ "\n");
+    ~data:
+      (Yojson.Safe.pretty_to_string (to_json ~generated_at ~curve params results) ^ "\n");
   Core_unix.rename ~src:(json ^ ".tmp") ~dst:json;
   write_results_parquet (dir ^/ "results.parquet") results;
   write_curves_parquet (dir ^/ "curves.parquet") results
@@ -226,10 +229,10 @@ let summary (r : Result.t) =
 let table results =
   let header =
     "| Rank | Leader | Window (days) | Follower pnl | Return | Max drawdown | Fees | \
-     Turnover | Orders | Changes | Skipped | Leader marked return | Leader curve return | \
-     Leader curve max drawdown |\n\
-     | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | \
-     ---: | ---: |\n"
+     Turnover | Orders | Changes | Skipped | Leader marked return | Leader curve return \
+     | Leader curve max drawdown |\n\
+     | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: \
+     | ---: | ---: |\n"
   in
   header
   ^ String.concat

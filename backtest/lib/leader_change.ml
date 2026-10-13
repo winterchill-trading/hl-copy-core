@@ -30,7 +30,8 @@ let close_group positions group =
   let traded = Size.sum (List.map group ~f:Fill.signed_size) in
   let volume = Size.sum (List.map group ~f:(fun (f : Fill.t) -> f.size)) in
   let cost =
-    Hl_copy_core.Usd.sum (List.map group ~f:(fun (f : Fill.t) -> Notional.mul f.size f.price))
+    Hl_copy_core.Usd.sum
+      (List.map group ~f:(fun (f : Fill.t) -> Notional.mul f.size f.price))
   in
   let price = if Size.is_zero volume then first.price else Avg.div cost volume in
   let before = Option.value (Map.find positions first.symbol) ~default:Size.zero in

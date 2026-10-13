@@ -12,8 +12,8 @@ type t =
 [@@deriving sexp_of]
 
 (** The same inputs [hl-leaderboard rank] scores: perpetual fills with a synthetic opening
-    fill for each coin already held when the history starts ([Rank.scored_fills]), and
-    the [portfolio] month curve, or the curve rebuilt from fills when there is none
+    fill for each coin already held when the history starts ([Rank.scored_fills]), and the
+    [portfolio] month curve, or the curve rebuilt from fills when there is none
     ([Rank.equity_curve]). [now_ms] is the time of the latest account state, used only by
     the rebuilt curve. *)
 val of_leader : now_ms:int -> Hl_leaderboard.Dataset.Leader.t -> t
