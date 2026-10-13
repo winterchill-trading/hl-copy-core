@@ -1,0 +1,7 @@
+(library
+ (name hl_copy_core_test)
+ (libraries core hl-copy-core market-data)
+ (inline_tests
+  (flags -source-tree-root .))
+ (preprocess
+  (pps ppx_jane)))
