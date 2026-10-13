@@ -1,5 +1,6 @@
 (library
  (name hl_copy_core_test)
+ (package hl-copy-core)
  (libraries core core_unix core_unix.filename_unix hl-copy-core market-data)
  (inline_tests
   (flags -source-tree-root .))
