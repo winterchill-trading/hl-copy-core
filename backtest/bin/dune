@@ -1,0 +1,7 @@
+(executable
+ (name main)
+ (public_name hl-copy-backtest)
+ (package hl-copy-backtest)
+ (libraries core core_unix.command_unix async hl-copy-core hl-copy-backtest)
+ (preprocess
+  (pps ppx_jane)))
