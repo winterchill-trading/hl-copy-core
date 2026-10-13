@@ -155,11 +155,6 @@ let in_flight pending =
     Size.(acc + p.remaining))
 ;;
 
-let needs_leader_equity : Scale.Mode.t -> bool = function
-  | Multiplier _ -> false
-  | Equity_ratio | Fixed_notional _ -> true
-;;
-
 (* The scaled and clamped target, or why there is none. [current] includes in-flight
    orders. *)
 let capped_target t symbol ~current =
@@ -169,7 +164,7 @@ let capped_target t symbol ~current =
     (match Map.find t.marks symbol with
      | None -> Error Plan.Note.Reason.No_mark
      | Some mark ->
-       if needs_leader_equity t.config.mode && not (Usd.is_positive t.leader_equity)
+       if Scale.needs_leader_equity t.config.mode && not (Usd.is_positive t.leader_equity)
        then Error No_leader_equity
        else (
          let raw =
@@ -177,6 +172,7 @@ let capped_target t symbol ~current =
              ~leader_size:(find_size t.leader_positions symbol)
              ~leader_equity:t.leader_equity
              ~follower_equity:t.follower_equity
+             ~mark
              ~mode:t.config.mode
          in
          let ctx =
