@@ -22,6 +22,8 @@
    (>= 5.2))
   dune
   core
+  core_unix
+  cryptokit
   ppx_jane
   bin_prot
   fixed-decimal
