@@ -19,6 +19,7 @@ symbols are Hyperliquid coin names (`BTC`, `ETH`).
 | `Plan` | IOC places and cancels, plus notes explaining caps and skips. |
 | `Mirror` | Per-follower state machine: leader updates, fills, closes, resync, rebalance. |
 | `Pnl` | Follower PnL attributed per leader (average-entry books). |
+| `Follower_config` | One follow (follower, leader, mode, caps, slippage, paused) as a sexp file; builds the `Mirror.Config.t`. |
 | `Score` | Leader score from fills and an equity curve. |
 | `Fill`, `Usd`, `Cloid`, `Address` | Shared records and binable wrappers of the wire types. |
 
@@ -29,21 +30,23 @@ follower's:
 
 | Mode | Target |
 | --- | --- |
-| `Equity_ratio` | `l * E_f / E_l` |
-| `Multiplier m` | `l * m` (m clamped to [0, 1000]) |
-| `Fixed_notional a` | `l * min(a, E_f) / E_l`: copy as if the follower had `a` to allocate |
+| `Equity_ratio` | `l * E_f / E_l`: both accounts carry the same leverage |
+| `Multiplier k` | `l * k * E_f / E_l`: `k = 0.5` halves the leader's leverage (k clamped to [0, 100]) |
+| `Fixed_notional n` | `sign(l) * n / mark`: `n` USD per open leader position, whatever its size |
 
-A non-positive `E_l` gives zero (the mirror skips the symbol with a `No_leader_equity`
-note instead of closing).
+For the equity modes the mirror skips a symbol with a `No_leader_equity` note while the
+leader's equity is unknown, instead of closing.
 
 ## Caps (`Caps`)
 
-Applied in order to the scaled target. Caps only limit growth; they never force the
-follower below what it already holds on the same side, so mark moves alone do not
-trade.
+Applied in order to the scaled target. Apart from the daily loss limit, caps only limit
+growth; they never force the follower below what it already holds on the same side, so
+mark moves alone do not trade.
 
 1. Allowlist: symbols not listed are never traded.
-2. Daily loss: once `E_f - E_day_start <= -max_daily_loss`, only reduce or close.
+2. Daily loss: once `E_f - E_day_start <= -max_daily_loss`, every target is zero: the
+   follower closes out and stays flat until `Mirror.start_day` (next UTC day or a manual
+   resume).
 3. Notional per symbol: `|target| * mark <= max_notional_per_symbol`.
 4. Leverage: `(other_notional + |target| * mark) / E_f <= max_leverage`.
 5. The order `target - current` is truncated to the lot; under one lot or under
@@ -53,8 +56,8 @@ trade.
 
 Sizes truncate toward zero to the lot. Hyperliquid perps (`Spec.hyperliquid_perp
 ~sz_decimals`): lot `10^-sz_decimals`, at most `6 - sz_decimals` price decimals and five
-significant figures (integer prices always valid). IOC limits sit `slippage_bps` through
-the mark and are rounded toward the mark (buys down, sells up), so rounding never widens
+significant figures (integer prices always valid). IOC limits sit `slippage_bps` (20 by default in `Follower_config`) through
+the reference price the engine passes as `mark` (best bid or ask, or the mid) and are rounded toward the mark (buys down, sells up), so rounding never widens
 the bound.
 
 ## Mirroring (`Mirror`)
