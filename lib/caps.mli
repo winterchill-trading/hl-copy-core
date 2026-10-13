@@ -110,8 +110,8 @@ module Decision : sig
   [@@deriving sexp_of]
 end
 
-(** The allowlist, daily-loss, notional and leverage steps: the capped target and the
-    caps that changed it. *)
+(** The allowlist, daily-loss, notional and leverage steps: the capped target and the caps
+    that changed it. *)
 val clamp
   :  t
   -> Context.t

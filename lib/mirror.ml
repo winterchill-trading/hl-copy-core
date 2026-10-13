@@ -151,7 +151,8 @@ let live_pending t symbol =
 ;;
 
 let in_flight pending =
-  List.fold pending ~init:Size.zero ~f:(fun acc (p : Pending.t) -> Size.(acc + p.remaining))
+  List.fold pending ~init:Size.zero ~f:(fun acc (p : Pending.t) ->
+    Size.(acc + p.remaining))
 ;;
 
 let needs_leader_equity : Scale.Mode.t -> bool = function
@@ -223,8 +224,9 @@ let plan_symbol t symbol =
     let effective = Size.(pos + kept) in
     let order, why = Caps.order t.config.caps ~spec ~mark ~current:effective ~target in
     let notes =
-      List.map (reasons @ Option.to_list why) ~f:(fun r ->
-        note symbol (Plan.Note.Reason.Capped r))
+      List.map
+        (reasons @ Option.to_list why)
+        ~f:(fun r -> note symbol (Plan.Note.Reason.Capped r))
     in
     let pending =
       List.map t.pending ~f:(fun (p : Pending.t) ->
@@ -242,7 +244,8 @@ let plan_symbol t symbol =
        let side : Side.t = if Size.is_positive d then Buy else Sell in
        let after = Size.(effective + d) in
        let reduce_only =
-         Size.(abs after < abs effective) && (Size.is_zero after || same_side after effective)
+         Size.(abs after < abs effective)
+         && (Size.is_zero after || same_side after effective)
        in
        let order =
          { Plan.Order.cloid
@@ -255,8 +258,7 @@ let plan_symbol t symbol =
          }
        in
        let pending =
-         pending
-         @ [ { Pending.cloid; symbol; remaining = d; cancel_requested = false } ]
+         pending @ [ { Pending.cloid; symbol; remaining = d; cancel_requested = false } ]
        in
        ( { t with pending; next_seq = t.next_seq + 1 }
        , { Plan.actions = cancels @ [ Place order ]; notes } ))
@@ -310,11 +312,17 @@ let on_follower_fill t (fill : Fill.t) =
 
 let on_order_closed t cloid =
   { t with
-    pending = List.filter t.pending ~f:(fun (p : Pending.t) -> not (Cloid.equal p.cloid cloid))
+    pending =
+      List.filter t.pending ~f:(fun (p : Pending.t) -> not (Cloid.equal p.cloid cloid))
   }
 ;;
 
-let on_resync t ~(leader_state : Leader_state.t) ~(follower_state : Follower_state.t) ~marks =
+let on_resync
+  t
+  ~(leader_state : Leader_state.t)
+  ~(follower_state : Follower_state.t)
+  ~marks
+  =
   let nonzero m = Map.filter m ~f:(fun s -> not (Size.is_zero s)) in
   let leader_positions = nonzero leader_state.positions in
   let t =
@@ -323,7 +331,9 @@ let on_resync t ~(leader_state : Leader_state.t) ~(follower_state : Follower_sta
     ; leader_positions
     ; follower_equity = follower_state.equity
     ; day_start_equity =
-        (if Usd.is_zero t.day_start_equity then follower_state.equity else t.day_start_equity)
+        (if Usd.is_zero t.day_start_equity
+         then follower_state.equity
+         else t.day_start_equity)
     ; follower_positions = nonzero follower_state.positions
     ; pending = follower_state.open_orders
     ; marks = Map.merge_skewed t.marks marks ~combine:(fun ~key:_ _ newer -> newer)
@@ -337,7 +347,8 @@ let start_day t = { t with day_start_equity = t.follower_equity }
 
 let apply t (event : Event.t) =
   match event with
-  | Leader_position { symbol; size; mark } -> on_leader_position_change t ~symbol ~size ~mark
+  | Leader_position { symbol; size; mark } ->
+    on_leader_position_change t ~symbol ~size ~mark
   | Leader_equity e -> on_leader_equity t e, Plan.empty
   | Follower_equity e -> on_follower_equity t e, Plan.empty
   | Mark { symbol; mark } -> on_mark t ~symbol ~mark, Plan.empty

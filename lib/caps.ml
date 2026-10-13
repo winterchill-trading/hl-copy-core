@@ -150,7 +150,9 @@ let clamp t (ctx : Context.t) ~target =
             Usd.(of_float (limit *. to_float ctx.equity) - ctx.other_notional)
             [@alert "-lossy"]
           in
-          let cap_size = if Usd.is_positive room then P.div room ctx.mark else Size.zero in
+          let cap_size =
+            if Usd.is_positive room then P.div room ctx.mark else Size.zero
+          in
           let clamped = clamp_magnitude ~current:ctx.current ~target ~cap_size in
           if not (Size.equal clamped target)
           then Queue.enqueue reasons (Reason.Leverage { wanted; limit });
@@ -167,7 +169,8 @@ let order t ~spec ~mark ~current ~target =
     let full_close = Size.is_zero target in
     let n = notional d mark in
     if (not full_close) && Usd.(n < t.min_order_notional)
-    then None, Some (Reason.Below_min_notional { notional = n; min = t.min_order_notional })
+    then
+      None, Some (Reason.Below_min_notional { notional = n; min = t.min_order_notional })
     else Some d, None
 ;;
 

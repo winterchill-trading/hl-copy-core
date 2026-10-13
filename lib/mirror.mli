@@ -200,8 +200,8 @@ val on_follower_fill : t -> Fill.t -> t
 val on_order_closed : t -> Cloid.t -> t
 
 (** Replaces both accounts with snapshots, the pending orders with [follower.open_orders]
-    and merges [marks], then plans every managed symbol. Sets the day's starting equity
-    if none was set. *)
+    and merges [marks], then plans every managed symbol. Sets the day's starting equity if
+    none was set. *)
 val on_resync
   :  t
   -> leader_state:Leader_state.t
