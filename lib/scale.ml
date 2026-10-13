@@ -18,22 +18,23 @@ module Mode = struct
     Quickcheck.Generator.union
       [ Quickcheck.Generator.return Equity_ratio
       ; Quickcheck.Generator.map (Float.gen_incl 0. 10.) ~f:(fun m -> Multiplier m)
-      ; Quickcheck.Generator.map
-          (Int.gen_incl 0 1_000_000_000_000_000)
-          ~f:(fun u -> Fixed_notional (Usd.of_units u))
+      ; Quickcheck.Generator.map (Int.gen_incl 0 1_000_000_000_000_000) ~f:(fun u ->
+          Fixed_notional (Usd.of_units u))
       ]
   ;;
 end
 
 let max_multiplier = 1000.
 
-(* [leader_size * capital / leader_equity], with the ratio taken first so no
-   intermediate overflows for any in-range equity. *)
+(* [leader_size * capital / leader_equity], with the ratio taken first so no intermediate
+   overflows for any in-range equity. *)
 let ratio_size ~leader_size ~leader_equity ~capital =
   if Usd.(leader_equity <= zero) || Usd.(capital <= zero)
   then Size.zero
   else (
-    let ratio = Fixed_decimal.div_units (Usd.to_units capital) (Usd.to_units leader_equity) in
+    let ratio =
+      Fixed_decimal.div_units (Usd.to_units capital) (Usd.to_units leader_equity)
+    in
     Size.of_units (Fixed_decimal.mul_units (Size.to_units leader_size) ratio))
 ;;
 

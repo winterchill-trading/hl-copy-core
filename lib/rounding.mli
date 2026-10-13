@@ -50,10 +50,9 @@ val delta
 (** Rounds a positive price onto the grid, [`Down] or [`Up]. *)
 val price : Spec.t -> Market_data.Price.t -> dir:[ `Down | `Up ] -> Market_data.Price.t
 
-(** The limit price of an immediate-or-cancel order that may trade at most
-    [slippage_bps] basis points through [mark]: a buy at [mark * (1 + bps / 10^4)] rounded
-    down, a sell at [mark * (1 - bps / 10^4)] rounded up, so rounding never widens the
-    bound. *)
+(** The limit price of an immediate-or-cancel order that may trade at most [slippage_bps]
+    basis points through [mark]: a buy at [mark * (1 + bps / 10^4)] rounded down, a sell
+    at [mark * (1 - bps / 10^4)] rounded up, so rounding never widens the bound. *)
 val ioc_limit
   :  Spec.t
   -> side:Market_data.Side.t

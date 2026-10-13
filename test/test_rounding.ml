@@ -38,8 +38,7 @@ let%expect_test "delta below one lot is dropped" =
   d "0.1" "0.100009";
   d "0.1" "0.2";
   d "0.1" "-0.05";
-  [%expect
-    {|
+  [%expect {|
     none
     0.1
     -0.15
@@ -80,8 +79,7 @@ let%expect_test "ioc limits stay inside the slippage bound" =
   List.iter Market_data.Side.all ~f:(fun side ->
     let px = Rounding.ioc_limit btc ~side ~mark ~slippage_bps:50 in
     print_s [%message "" (side : Market_data.Side.t) ~limit:(Price.to_string px)]);
-  [%expect
-    {|
+  [%expect {|
     ((side Buy) (limit 100500))
     ((side Sell) (limit 99500))
     |}]

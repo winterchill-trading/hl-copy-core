@@ -56,9 +56,9 @@ let num_digits n =
   loop n 1
 ;;
 
-(* Grid step at price [u] (in units): the tick, or the significant-figure step when it
-   is coarser and a multiple of the tick. The significant-figure step is capped at one
-   whole unit of price, since integer prices are always valid. *)
+(* Grid step at price [u] (in units): the tick, or the significant-figure step when it is
+   coarser and a multiple of the tick. The significant-figure step is capped at one whole
+   unit of price, since integer prices are always valid. *)
 let step (spec : Spec.t) u =
   let tick = Int.max 1 (Price.to_units spec.tick) in
   match spec.sig_figs with
@@ -82,8 +82,8 @@ let price spec p ~dir =
   then p
   else (
     let r = round_to ~step:(step spec u) ~dir u in
-    (* Rounding up can add a digit (99999.5 -> 100000) and rounding down can drop one;
-       the result is still on the coarser of the two grids, so one pass is enough. *)
+    (* Rounding up can add a digit (99999.5 -> 100000) and rounding down can drop one; the
+       result is still on the coarser of the two grids, so one pass is enough. *)
     Price.of_units r)
 ;;
 

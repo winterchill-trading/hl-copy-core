@@ -10,8 +10,8 @@
       [l * min(a, E_f) / E_l]. This is the "copy with $a" allocation.
 
     A non-positive [E_l] (or a non-positive capital for the equity modes) gives zero. The
-    result is truncated toward zero to 10^-8; rounding to the venue's lot is
-    {!Rounding}'s job. *)
+    result is truncated toward zero to 10^-8; rounding to the venue's lot is {!Rounding}'s
+    job. *)
 
 open! Core
 

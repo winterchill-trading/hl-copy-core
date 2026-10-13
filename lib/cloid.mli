@@ -1,5 +1,5 @@
-(** Hyperliquid client order ids ({!Hl_protocol.Cloid}) with a stable binary encoding
-    (the ["0x..."] string), and the deterministic ids the mirror assigns. *)
+(** Hyperliquid client order ids ({!Hl_protocol.Cloid}) with a stable binary encoding (the
+    ["0x..."] string), and the deterministic ids the mirror assigns. *)
 
 open! Core
 
