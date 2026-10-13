@@ -1,0 +1,10 @@
+(executable
+ (name main)
+ (libraries
+  core
+  core_unix.command_unix
+  core_bench
+  hl-copy-core
+  hl_copy_core_test)
+ (preprocess
+  (pps ppx_jane)))
