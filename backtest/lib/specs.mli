@@ -8,7 +8,7 @@
 
 open! Core
 
-type t = Hl_copy_core.Rounding.Spec.t Hl_copy_core.Mirror.Symbol_map.t
+type t = Hl_copy_core.Rounding.Spec.t Hl_copy_core.Mirror.Symbol_map.t [@@deriving sexp_of]
 
 val of_meta : Hl_protocol.Meta.t -> t
 

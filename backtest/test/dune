@@ -12,6 +12,8 @@
   hl-leaderboard
   hl-copy-backtest)
  (inline_tests
+  (deps
+   (glob_files fixtures/*.json))
   (flags -source-tree-root .))
  (preprocess
   (pps ppx_jane)))

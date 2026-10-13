@@ -3,7 +3,7 @@ module Symbol = Market_data.Symbol
 module Size = Market_data.Size
 module Spec = Hl_copy_core.Rounding.Spec
 
-type t = Spec.t Hl_copy_core.Mirror.Symbol_map.t
+type t = Spec.t Hl_copy_core.Mirror.Symbol_map.t [@@deriving sexp_of]
 
 let of_meta (meta : Hl_protocol.Meta.t) =
   List.fold meta.universe ~init:(Map.empty (module Symbol)) ~f:(fun acc m ->
