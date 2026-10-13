@@ -25,6 +25,7 @@
   ppx_jane
   bin_prot
   fixed-decimal
+  exchange-core
   hl-protocol
   market-data
   (core_bench :with-test)))
