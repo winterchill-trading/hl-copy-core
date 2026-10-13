@@ -27,11 +27,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Same layout as exchange-core's engine job: the cached switch is built
-      # for hl-copy-backtest's opam file alone (hl-copy-core and hl-leaderboard
-      # come in as pins), then hl-copy-core is re-pinned to this checkout,
-      # which rebuilds hl-leaderboard against it, and only the backtest package
-      # is built so dune links the installed hl-copy-core.
+      # The switch is built for hl-copy-backtest's opam file alone, with
+      # hl-copy-core pinned at the commit under test (so hl-leaderboard is built
+      # against it), and only the backtest package is built so dune links the
+      # installed hl-copy-core. Re-pinning to the checkout afterwards, as
+      # exchange-core does, made the solver remove hl-leaderboard, hl-client
+      # and venue-net instead of rebuilding them.
       - run: mkdir -p _ox-backtest && cp hl-copy-backtest.opam _ox-backtest/
       - uses: winterchill-trading/infra/.github/actions/ox-setup@main
         with:
@@ -44,9 +45,8 @@ jobs:
             hl-protocol https://github.com/winterchill-trading/hl-protocol.git
             venue-net https://github.com/winterchill-trading/venue-net.git
             hl-client https://github.com/winterchill-trading/hl-client.git
-            hl-copy-core https://github.com/winterchill-trading/hl-copy-core.git
+            hl-copy-core https://github.com/winterchill-trading/hl-copy-core.git#${{ github.sha }}
             hl-leaderboard https://github.com/winterchill-trading/hl-leaderboard.git
-      - run: opam pin add hl-copy-core . --yes
       - run: opam exec -- dune build --only-packages hl-copy-backtest @install
       - run: opam exec -- dune build --only-packages hl-copy-backtest @runtest
   obj-magic:
