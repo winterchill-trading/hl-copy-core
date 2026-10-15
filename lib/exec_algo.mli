@@ -2,12 +2,12 @@
     choice stored in {!Follower_config}.
 
     The constructors and fields are those of [Execution_algos.Algo.Stable.V1] in the
-    execution-algos repository (same sexp, same bin_prot shape; the copy engine checks
-    the digests are equal), kept here so this library does not depend on it. The engine
+    execution-algos repository (same sexp, same bin_prot shape; the copy engine checks the
+    digests are equal), kept here so this library does not depend on it. The engine
     converts with a one-to-one match. Durations are milliseconds.
 
-    [Immediate] is the default and the behaviour before algos existed: each planned
-    order is one IOC at the mirror's limit. *)
+    [Immediate] is the default and the behaviour before algos existed: each planned order
+    is one IOC at the mirror's limit. *)
 
 open! Core
 
@@ -75,10 +75,13 @@ type t = Stable.V1.t =
 
 val default : t
 
-(** ["immediate"], ["twap"], ["vwap"], ["pov"], ["passive"], ["iceberg"] (passive
-    showing less than everything), ["adaptive"]. *)
+(** ["immediate"], ["twap"], ["vwap"], ["pov"], ["passive"], ["iceberg"] (passive showing
+    less than everything), ["adaptive"]. *)
 val name : t -> string
 
-(** Positive durations and slices; participation and display above 0 and at most 1;
-    a positive ratio and bounds. *)
+(** What is wrong with the parameters, if anything: positive durations and slices;
+    participation and display above 0 and at most 1; a positive ratio and bounds. *)
+val errors : t -> string list
+
+(** [Ok ()] when {!errors} is empty. *)
 val validate : t -> unit Or_error.t

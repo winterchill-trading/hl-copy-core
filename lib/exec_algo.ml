@@ -47,7 +47,7 @@ let name = function
   | Adaptive _ -> "adaptive"
 ;;
 
-let validate t =
+let errors t =
   let pos name x = Option.some_if (x <= 0) (name ^ " must be positive") in
   let frac name x =
     Option.some_if
@@ -65,7 +65,8 @@ let validate t =
       ]
     | Pov { participation; max_duration_ms } ->
       [ frac "participation" participation; pos "max_duration" max_duration_ms ]
-    | Passive { display; timeout_ms } -> [ frac "display" display; pos "timeout" timeout_ms ]
+    | Passive { display; timeout_ms } ->
+      [ frac "display" display; pos "timeout" timeout_ms ]
     | Adaptive { small_ratio; depth_bps; max_behind_bps; max_drift_bps; timeout_ms } ->
       [ Option.some_if
           (Float.is_nan small_ratio || Float.(small_ratio <= 0.))
@@ -76,7 +77,11 @@ let validate t =
       ; pos "timeout" timeout_ms
       ]
   in
-  match List.filter_opt errors with
+  List.filter_opt errors
+;;
+
+let validate t =
+  match errors t with
   | [] -> Ok ()
   | errors -> Or_error.error_s [%message "invalid execution algo" (errors : string list)]
 ;;
