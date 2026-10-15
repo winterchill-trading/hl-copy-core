@@ -60,3 +60,59 @@ let%expect_test "validation" =
         "multiplier not positive"))))
     |}]
 ;;
+
+let%expect_test "algo: written only when not immediate, old files read as immediate" =
+  let t = Follower_config.create ~follower ~leader () in
+  let twap =
+    { t with algo = Twap { duration_ms = 60_000; slices = 6; max_participation = None } }
+  in
+  print_string (Follower_config.to_file_contents twap);
+  [%expect
+    {|
+    ((follower 0x00000000000000000000000000000000000000f1)
+     (leader 0xabcdef0123456789abcdef0123456789abcdef01) (mode Equity_ratio)
+     (caps
+      ((max_leverage ()) (max_notional_per_symbol ()) (max_daily_loss ())
+       (allowlist ()) (min_order_notional 10)))
+     (slippage_bps 20) (paused false)
+     (algo (Twap (duration_ms 60000) (slices 6) (max_participation ()))))
+    |}];
+  [%test_result: Follower_config.t]
+    (ok_exn (Follower_config.of_file_contents (Follower_config.to_file_contents twap)))
+    ~expect:twap;
+  (* a file written before [algo] existed *)
+  let old =
+    Sexp.to_string
+      (Follower_config.Stable.V1.sexp_of_t (Follower_config.Stable.V2.to_v1 twap))
+  in
+  print_s [%sexp ((ok_exn (Follower_config.of_file_contents old)).algo : Exec_algo.t)];
+  [%expect {| Immediate |}];
+  print_s
+    [%sexp
+      (Follower_config.of_file_contents
+         (Follower_config.to_file_contents
+            { twap with algo = Pov { participation = 1.5; max_duration_ms = 0 } })
+       : Follower_config.t Or_error.t)];
+  [%expect
+    {|
+    (Error
+     ("invalid follower config"
+      (errors
+       ("algo: participation must be in (0, 1]"
+        "algo: max_duration must be positive"))))
+    |}]
+;;
+
+let%expect_test "stable shapes" =
+  print_endline
+    (Bin_prot.Shape.eval_to_digest_string Follower_config.Stable.V1.bin_shape_t);
+  print_endline
+    (Bin_prot.Shape.eval_to_digest_string Follower_config.Stable.V2.bin_shape_t);
+  print_endline (Bin_prot.Shape.eval_to_digest_string Exec_algo.Stable.V1.bin_shape_t);
+  [%expect
+    {|
+    f2f10032b6d39691e468618d1cf1fa12
+    0ab5f263b5dffcb4b25e128558ec1cec
+    3a486612be155bbf3411a99a085779a6
+    |}]
+;;
