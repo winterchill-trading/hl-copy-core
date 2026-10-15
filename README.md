@@ -19,7 +19,8 @@ symbols are Hyperliquid coin names (`BTC`, `ETH`).
 | `Plan` | IOC places and cancels, plus notes explaining caps and skips. |
 | `Mirror` | Per-follower state machine: leader updates, fills, closes, resync, rebalance. |
 | `Pnl` | Follower PnL attributed per leader (average-entry books). |
-| `Follower_config` | One follow (follower, leader, mode, caps, slippage, paused) as a sexp file; builds the `Mirror.Config.t`. |
+| `Follower_config` | One follow (follower, leader, mode, caps, slippage, paused, execution algo) as a sexp file; builds the `Mirror.Config.t`. `Stable.V2` adds `algo`; files without it read as `Immediate` and a default follow writes the same text as before. |
+| `Exec_algo` | The execution algorithm of a follow (Immediate, TWAP, VWAP, POV, passive, adaptive): the same constructors, sexp and bin_prot shape as `Execution_algos.Algo` in execution-algos, kept here so this library does not depend on it. |
 | `Score` | Leader score from fills and an equity curve. |
 | `Fill`, `Usd`, `Cloid`, `Address` | Shared records and binable wrappers of the wire types. |
 
