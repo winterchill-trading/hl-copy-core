@@ -12,9 +12,31 @@ module Stable = struct
       }
     [@@deriving bin_io, sexp, compare, equal]
   end
+
+  module V2 = struct
+    type t =
+      { follower : Address.Stable.V1.t
+      ; leader : Address.Stable.V1.t
+      ; mode : Scale.Mode.Stable.V1.t
+      ; caps : Caps.Stable.V1.t
+      ; slippage_bps : int
+      ; paused : bool
+      ; algo : Exec_algo.Stable.V1.t
+           [@sexp.default Exec_algo.default] [@sexp_drop_default.equal]
+      }
+    [@@deriving bin_io, sexp, compare, equal]
+
+    let of_v1 ({ follower; leader; mode; caps; slippage_bps; paused } : V1.t) =
+      { follower; leader; mode; caps; slippage_bps; paused; algo = Exec_algo.default }
+    ;;
+
+    let to_v1 { follower; leader; mode; caps; slippage_bps; paused; algo = _ } : V1.t =
+      { follower; leader; mode; caps; slippage_bps; paused }
+    ;;
+  end
 end
 
-include Stable.V1
+include Stable.V2
 
 let default_slippage_bps = 20
 
@@ -22,11 +44,12 @@ let create
   ?(mode = Scale.Mode.Equity_ratio)
   ?(caps = Caps.none)
   ?(slippage_bps = default_slippage_bps)
+  ?(algo = Exec_algo.default)
   ~follower
   ~leader
   ()
   =
-  { follower; leader; mode; caps; slippage_bps; paused = false }
+  { follower; leader; mode; caps; slippage_bps; paused = false; algo }
 ;;
 
 let validate t =
@@ -54,6 +77,7 @@ let validate t =
           (Usd.is_negative t.caps.min_order_notional)
           "min_order_notional negative"
       ]
+    @ List.map (Exec_algo.errors t.algo) ~f:(fun e -> "algo: " ^ e)
   in
   match errors with
   | [] -> Ok ()
