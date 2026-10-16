@@ -13,7 +13,7 @@ Workspace-wide rules, the repository map and the CI model are in
 
 | Path | Holds |
 | --- | --- |
-| `lib/` | The `hl_copy_core` library: `Scale`, `Caps`, `Rounding`, `Mirror`, `Plan`, `Score`, `Pnl`, `Follower_config`, `Key_store` ([lib/AGENTS.md](lib/AGENTS.md)) |
+| `lib/` | The `hl_copy_core` library: `Scale`, `Caps`, `Rounding`, `No_trade_band`, `Mirror`, `Plan`, `Score`, `Pnl`, `Follower_config`, `Key_store` ([lib/AGENTS.md](lib/AGENTS.md)) |
 | `backtest/` | The `hl-copy-backtest` package: replays a leader's changes through `Mirror` from a leaderboard collection ([backtest/AGENTS.md](backtest/AGENTS.md)) |
 | `bench/` | `main.exe`, the cost of one `Mirror` update ([bench/AGENTS.md](bench/AGENTS.md)) |
 | `test/` | Quickcheck properties of `Mirror`, the allocation pin, and expect tests ([test/AGENTS.md](test/AGENTS.md)) |
@@ -53,7 +53,10 @@ Format only this repository, after the tests pass:
   random source or a network call to this library.
 - Mirroring properties are quickcheck properties: duplicated updates plan nothing new,
   replayed journals give the same plans and client ids, and a rebalance after full fills
-  plans nothing. Keep them passing when you change `Mirror`.
+  plans nothing. Keep them passing when you change `Mirror`. The no-trade band has its
+  own: an empty band (zero cost, no quadratic term) plans exactly what no band plans, and
+  the half-width is monotone in cost. A follow without a band must keep planning byte for
+  byte what it planned before bands existed.
 - The allocation pin in `test/` measures words; read how it pins them before changing it
   (see the cross-platform rule in the root workspace guide).
 - Odoc on every public value; comments at every pinned number, saying what and why.
@@ -85,6 +88,11 @@ Check a run with one `gh run list --limit 1` and at most one
   count grows. Measure with `bench/` before you add a per-symbol loop.
 - The agent key store seals keys with ChaCha20 and HMAC-SHA256 (encrypt-then-MAC), because the
   switch's cryptokit has no AEAD. Do not replace it without a new format version.
+- A new field in `Mirror.t` adds a word to every record copy, and the allocation pin in
+  `test/test_mirror_alloc.ml` moves with it; say so in the comment there.
+- `Plan`, `Mirror.Config`, `Mirror` and `Follower_config` are on `Stable.V2`/`V3`: the
+  engine journals plans and follow configs, so a new note reason or config field is a new
+  version with `of_v*`/`to_v*`, never an edit in place.
 - Scripted edits: assert the text to replace exists first, and run the formatter on the text
   before matching, since it reflows comments.
 
