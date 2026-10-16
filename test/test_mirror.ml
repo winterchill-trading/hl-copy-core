@@ -7,7 +7,7 @@ module Symbol = Market_data.Symbol
 let btc = Symbol.of_string "BTC"
 let eth = Symbol.of_string "ETH"
 
-let config ?(caps = Caps.none) ?(mode = Scale.Mode.Equity_ratio) () =
+let config ?(caps = Caps.none) ?(mode = Scale.Mode.Equity_ratio) ?band () =
   { Mirror.Config.follower = 1
   ; mode
   ; caps
@@ -18,12 +18,12 @@ let config ?(caps = Caps.none) ?(mode = Scale.Mode.Equity_ratio) () =
         [ btc, Rounding.Spec.hyperliquid_perp ~sz_decimals:5
         ; eth, Rounding.Spec.hyperliquid_perp ~sz_decimals:4
         ]
-  ; band = None
+  ; band
   }
 ;;
 
-let start ?caps ?mode () =
-  Mirror.create (config ?caps ?mode ())
+let start ?caps ?mode ?band () =
+  Mirror.create (config ?caps ?mode ?band ())
   |> Fn.flip Mirror.on_leader_equity (Usd.of_string "100000")
   |> Fn.flip Mirror.on_follower_equity (Usd.of_string "10000")
   |> Mirror.start_day
@@ -242,8 +242,8 @@ end
 let symbols = [| btc; eth |]
 
 (* Turns abstract steps into events against the current state. *)
-let run steps =
-  let t = start () in
+let run ?band steps =
+  let t = start ?band () in
   let last = ref None in
   List.fold steps ~init:(t, []) ~f:(fun (t, events) step ->
     let event : Mirror.Event.t option =
@@ -377,4 +377,146 @@ let%test_unit "after every order fills, the follower sits on the target and a re
         assert (
           Size.(gap < spec.lot)
           || Usd.(Caps.notional gap mark < t.config.caps.min_order_notional))))
+;;
+
+(* {2 No-trade band} *)
+
+let zero_band = { No_trade_band.default with fee_bps = 0.; slippage = Fixed_bps 0. }
+
+let%test_unit "an empty band plans exactly what no band plans" =
+  Quickcheck.test steps_gen ~sexp_of:[%sexp_of: Step.t list] ~trials:300 ~f:(fun steps ->
+    let t, events = run steps in
+    let t', events' = run ~band:zero_band steps in
+    [%test_result: (Mirror.Event.t * Plan.t) list] events' ~expect:events;
+    [%test_result: Mirror.t] { t' with config = { t'.config with band = None } } ~expect:t)
+;;
+
+let band_gen =
+  let open Quickcheck.Generator.Let_syntax in
+  let%map fee = Float.gen_incl 0. 10.
+  and slippage = Float.gen_incl 0. 20.
+  and risk_aversion = Float.gen_incl 1. 200.
+  and vol_bps = Float.gen_incl 50. 500. in
+  { No_trade_band.default with fee_bps = fee; slippage = Fixed_bps slippage; risk_aversion; vol_bps }
+;;
+
+let%test_unit "with a band: replays are identical and duplicated updates place nothing" =
+  Quickcheck.test
+    (Quickcheck.Generator.both band_gen steps_gen)
+    ~sexp_of:[%sexp_of: No_trade_band.t * Step.t list]
+    ~trials:200
+    ~f:(fun (band, steps) ->
+      let t, events = run ~band steps in
+      let t', plans =
+        List.fold events ~init:(start ~band (), []) ~f:(fun (t, plans) (e, _) ->
+          let t, plan = Mirror.apply t e in
+          t, plan :: plans)
+      in
+      [%test_result: Mirror.t] t' ~expect:t;
+      [%test_result: Plan.t list] (List.rev plans) ~expect:(List.map events ~f:snd);
+      match
+        List.find (List.rev events) ~f:(fun (e, _) ->
+          match e with
+          | Leader_position _ -> true
+          | _ -> false)
+      with
+      | None -> ()
+      | Some (e, _) ->
+        let t, _ = Mirror.apply t e in
+        let _, again = Mirror.apply t e in
+        [%test_result: Plan.Order.t list] (Plan.places again) ~expect:[])
+;;
+
+let%test_unit "with a proportional band, a rebalance after every fill places nothing and \
+               the gap is at most the half-width or a lot"
+  =
+  Quickcheck.test
+    (Quickcheck.Generator.both band_gen steps_gen)
+    ~sexp_of:[%sexp_of: No_trade_band.t * Step.t list]
+    ~trials:200
+    ~f:(fun (band, steps) ->
+      let t, _ = run ~band steps in
+      let t, _ = Mirror.rebalance t in
+      let t =
+        List.fold t.pending ~init:t ~f:(fun t (p : Mirror.Pending.t) ->
+          if p.cancel_requested
+          then Mirror.on_order_closed t p.cloid
+          else
+            Mirror.on_follower_fill
+              t
+              { time_ns = 0
+              ; symbol = p.symbol
+              ; side = (if Size.is_positive p.remaining then Buy else Sell)
+              ; size = Size.abs p.remaining
+              ; price = Price.of_int 1000
+              ; fee = Usd.zero
+              ; closed_pnl = Usd.zero
+              ; cloid = Some p.cloid
+              })
+      in
+      let _, plan = Mirror.rebalance t in
+      [%test_result: Plan.Order.t list] (Plan.places plan) ~expect:[];
+      let cost_bps = No_trade_band.cost_bps band ~estimate:None in
+      let h =
+        No_trade_band.half_width band ~cost_bps ~equity:(Usd.to_float t.follower_equity)
+      in
+      Array.iter symbols ~f:(fun symbol ->
+        match Mirror.target t symbol with
+        | None, _ -> ()
+        | Some target, _ ->
+          let pos =
+            Option.value (Map.find t.follower_positions symbol) ~default:Size.zero
+          in
+          let spec = Map.find_exn t.config.specs symbol in
+          let mark = Map.find_exn t.marks symbol in
+          let gap = Size.(abs (target - pos)) in
+          let gap_usd = Usd.to_float (Caps.notional gap mark) in
+          let lot_usd = Usd.to_float (Caps.notional spec.lot mark) in
+          let min_usd = Usd.to_float t.config.caps.min_order_notional in
+          (* the edge, plus what lot truncation and the minimum order leave *)
+          assert (Float.(gap_usd <= h +. lot_usd +. min_usd +. 0.01))))
+;;
+
+let%expect_test "a band note says what was held back" =
+  let t = start ~band:No_trade_band.default () in
+  (* 10% of the leader's 1 BTC at 100,000 is 10,000 USD, well past the 528 USD edge *)
+  let t = leader t btc "1" "100000" in
+  [%expect {|
+    ((actions
+      ((Place
+        ((cloid 0x00000000000000010000000000000000) (symbol BTC) (side Buy)
+         (size 0.09472) (limit_px 100500) (reduce_only false)))))
+     (notes ()))
+    |}];
+  (* fill it, then a small leader change stays inside the band *)
+  let t =
+    List.fold t.pending ~init:t ~f:(fun t (p : Mirror.Pending.t) ->
+      Mirror.on_follower_fill
+        t
+        { time_ns = 0
+        ; symbol = p.symbol
+        ; side = Buy
+        ; size = p.remaining
+        ; price = Price.of_int 100000
+        ; fee = Usd.zero
+        ; closed_pnl = Usd.zero
+        ; cloid = Some p.cloid
+        })
+  in
+  let t = leader t btc "0.995" "100000" in
+  [%expect {|
+    ((actions ())
+     (notes
+      (((symbol BTC)
+        (reason (Within_band (gap 0.00478) (band 527.77777778) (saved 0.4541)))))))
+    |}];
+  (* the leader closes: the follower closes in full *)
+  let _ = leader t btc "0" "100000" in
+  [%expect {|
+    ((actions
+      ((Place
+        ((cloid 0x00000000000000010000000000000001) (symbol BTC) (side Sell)
+         (size 0.09472) (limit_px 99500) (reduce_only true)))))
+     (notes ()))
+    |}]
 ;;
