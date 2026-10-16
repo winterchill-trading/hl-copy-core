@@ -19,7 +19,8 @@ symbols are Hyperliquid coin names (`BTC`, `ETH`).
 | `Plan` | IOC places and cancels, plus notes explaining caps and skips. |
 | `Mirror` | Per-follower state machine: leader updates, fills, closes, resync, rebalance. |
 | `Pnl` | Follower PnL attributed per leader (average-entry books). |
-| `Follower_config` | One follow (follower, leader, mode, caps, slippage, paused, execution algo) as a sexp file; builds the `Mirror.Config.t`. `Stable.V2` adds `algo`; files without it read as `Immediate` and a default follow writes the same text as before. |
+| `Follower_config` | One follow (follower, leader, mode, caps, slippage, paused, execution algo, no-trade band) as a sexp file; builds the `Mirror.Config.t`. `Stable.V2` adds `algo`, `Stable.V3` the optional `band`; files without them read as `Immediate` and no band, and a default follow writes the same text as before. |
+| `No_trade_band` | The no-trade band: closed-form band edges from the estimated cost (fee plus expected slippage) and a risk aversion, for proportional and quadratic costs. |
 | `Exec_algo` | The execution algorithm of a follow (Immediate, TWAP, VWAP, POV, passive, adaptive): the same constructors, sexp and bin_prot shape as `Execution_algos.Algo` in execution-algos, kept here so this library does not depend on it. |
 | `Score` | Leader score from fills and an equity curve. |
 | `Fill`, `Usd`, `Cloid`, `Address` | Shared records and binable wrappers of the wire types. |
@@ -78,6 +79,42 @@ overshoot, and places one IOC order for the remainder. Consequences:
   are left alone.
 
 Leader equity changes apply from the next position change or `rebalance`.
+
+## No-trade band (`No_trade_band`)
+
+Off by default. A follow with a `band` rebalances a symbol only when the gap between the
+follower's position (plus in-flight orders) and its capped target costs more to carry
+than to close. With `g` the gap in USD notional, `E` the follower's equity, `c` the
+one-way cost (`fee_bps` plus the expected slippage, as a fraction), `s` the symbol's
+volatility over the time a gap stays open (`vol_bps`), `gamma` the risk aversion and
+`eta` the quadratic impact coefficient, a trade `q` minimises
+
+```text
+c |q| + eta q^2 / E + gamma s^2 (g - q)^2 / (2 E)
+```
+
+which gives a no-trade region with closed-form edges:
+
+| | Inside `\|g\| <= h` | Outside |
+| --- | --- | --- |
+| `Proportional` | nothing; a `Within_band` note with the gap, `h` and the cost saved | trade to the near edge, `\|g\| - h` |
+| `(Quadratic (impact eta))` | the same | trade `phi (\|g\| - h)` with `phi = gamma s^2 / (gamma s^2 + 2 eta)` |
+
+with `h = c E / (gamma s^2)`. The band widens with the cost and narrows with the risk
+aversion and the volatility (quickcheck); with a zero cost and no quadratic term it is
+empty and the mirror plans exactly what it plans without a band (quickcheck on random
+leader paths). A leader close is always copied in full. The slippage is either a fixed
+estimate (`(Fixed_bps 5)`) or `(Impact (fallback_bps 5))`: the caller sets a per-symbol
+estimate from the book with `Mirror.on_slippage_estimate` (the engine walks the book with
+execution-algos' `Impact`), the fallback applies until one is known.
+
+```text
+(band ((fee_bps 4.5) (slippage (Fixed_bps 5)) (risk_aversion 20) (vol_bps 300)
+       (cost_model Proportional)))
+```
+
+These defaults (`No_trade_band.default`) give a half-width of 5.3% of equity: on a
+10,000 USD follower, gaps under 528 USD of BTC stay open.
 
 Cost of one leader update (`bench/main.exe`, Apple M-series, `-quota 1`):
 
