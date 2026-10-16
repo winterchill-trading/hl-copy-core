@@ -72,6 +72,7 @@ let reason_name : Plan.Note.Reason.t -> string = function
   | No_mark -> "no_mark"
   | No_spec -> "no_spec"
   | No_leader_equity -> "no_leader_equity"
+  | Within_band _ -> "within_band"
 ;;
 
 let max_drawdown values =
@@ -228,7 +229,7 @@ let run (params : Params.t) (input : Input.t) =
       List.exists plan.notes ~f:(fun n ->
         match n.reason with
         | Capped _ -> true
-        | No_mark | No_spec | No_leader_equity -> false)
+        | No_mark | No_spec | No_leader_equity | Within_band _ -> false)
     in
     if placed
     then (
