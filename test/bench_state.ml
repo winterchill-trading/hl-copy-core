@@ -19,6 +19,7 @@ let in_line ~n =
         Array.to_list syms
         |> List.map ~f:(fun s -> s, Rounding.Spec.hyperliquid_perp ~sz_decimals:2)
         |> Map.of_alist_exn (module Symbol)
+    ; band = None
     }
   in
   let positions size =

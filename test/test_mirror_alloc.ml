@@ -14,7 +14,8 @@ let words ~n make =
 
 (* Minor words per Mirror.apply of one leader update. Pinned so a change that makes the
    hot path allocate much more shows up in review; the counts move with the symbol count
-   (map rebuilds and the other-notional fold are O(log n) and O(n)). *)
+   (map rebuilds and the other-notional fold are O(log n) and O(n)). The no-trade band
+   field added one word to each copy of the mirror record (two copies per update). *)
 let%expect_test "allocation of a leader update" =
   List.iter [ 1; 20; 100 ] ~f:(fun n ->
     printf
@@ -24,8 +25,8 @@ let%expect_test "allocation of a leader update" =
       (words ~n Bench_state.grow_update));
   [%expect
     {|
-    n=1 same=86 grow=188
-    n=20 same=122 grow=224
-    n=100 same=158 grow=260
+    n=1 same=88 grow=190
+    n=20 same=124 grow=226
+    n=100 same=160 grow=262
     |}]
 ;;

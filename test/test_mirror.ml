@@ -18,6 +18,7 @@ let config ?(caps = Caps.none) ?(mode = Scale.Mode.Equity_ratio) () =
         [ btc, Rounding.Spec.hyperliquid_perp ~sz_decimals:5
         ; eth, Rounding.Spec.hyperliquid_perp ~sz_decimals:4
         ]
+  ; band = None
   }
 ;;
 
@@ -313,8 +314,8 @@ let%test_unit "replaying the journal gives the same plans and state" =
     (* and through bin_io, as the journal stores them *)
     let roundtrip =
       Binable.of_string
-        (module Mirror.Stable.V1)
-        (Binable.to_string (module Mirror.Stable.V1) t)
+        (module Mirror.Stable.V2)
+        (Binable.to_string (module Mirror.Stable.V2) t)
     in
     [%test_result: Mirror.t] roundtrip ~expect:t)
 ;;
