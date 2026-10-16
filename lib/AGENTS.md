@@ -2,8 +2,9 @@
 
 The `hl_copy_core` library. Pure modules: `Scale` (sizing), `Caps` (limits and their reasons),
 `Rounding` (lots, ticks, significant figures), `Mirror` (per-follower state and plans), `Plan`,
-`Score` (leader score), `Pnl`, `Follower_config` (validated sexp config, `Stable.V2` with the
-execution algo), `Exec_algo` (a copy of execution-algos' `Algo` type, kept in step by a digest
+`Score` (leader score), `Pnl`, `Follower_config` (validated sexp config, `Stable.V3` with the
+execution algo and the optional no-trade band), `No_trade_band` (closed-form band edges from
+cost and risk aversion), `Exec_algo` (a copy of execution-algos' `Algo` type, kept in step by a digest
 test in hl-copy-engine), `Key_store` (sealed agent keys on disk).
 
 Build from the repository root with `opam exec --switch 5.2.0+ox -- dune build --root .. @hl-copy-core/all`.
