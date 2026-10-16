@@ -55,9 +55,38 @@ module Note = struct
           | No_leader_equity
         [@@deriving bin_io, sexp, compare, equal]
       end
+
+      module V2 = struct
+        type t =
+          | Capped of Caps.Reason.Stable.V1.t
+          | No_mark
+          | No_spec
+          | No_leader_equity
+          | Within_band of
+              { gap : Size.Stable.V1.t
+              ; band : Usd.Stable.V1.t
+              ; saved : Usd.Stable.V1.t
+              }
+        [@@deriving bin_io, sexp, compare, equal]
+
+        let of_v1 : V1.t -> t = function
+          | Capped r -> Capped r
+          | No_mark -> No_mark
+          | No_spec -> No_spec
+          | No_leader_equity -> No_leader_equity
+        ;;
+
+        let to_v1 : t -> V1.t option = function
+          | Capped r -> Some (Capped r)
+          | No_mark -> Some No_mark
+          | No_spec -> Some No_spec
+          | No_leader_equity -> Some No_leader_equity
+          | Within_band _ -> None
+        ;;
+      end
     end
 
-    include Stable.V1
+    include Stable.V2
   end
 
   module Stable = struct
@@ -68,9 +97,26 @@ module Note = struct
         }
       [@@deriving bin_io, sexp, compare, equal]
     end
+
+    module V2 = struct
+      type t =
+        { symbol : Symbol.Stable.V1.t
+        ; reason : Reason.Stable.V2.t
+        }
+      [@@deriving bin_io, sexp, compare, equal]
+
+      let of_v1 ({ symbol; reason } : V1.t) =
+        { symbol; reason = Reason.Stable.V2.of_v1 reason }
+      ;;
+
+      let to_v1 { symbol; reason } : V1.t option =
+        Option.map (Reason.Stable.V2.to_v1 reason) ~f:(fun reason ->
+          { V1.symbol; reason })
+      ;;
+    end
   end
 
-  include Stable.V1
+  include Stable.V2
 end
 
 module Stable = struct
@@ -81,9 +127,25 @@ module Stable = struct
       }
     [@@deriving bin_io, sexp, compare, equal]
   end
+
+  module V2 = struct
+    type t =
+      { actions : Action.Stable.V1.t list
+      ; notes : Note.Stable.V2.t list
+      }
+    [@@deriving bin_io, sexp, compare, equal]
+
+    let of_v1 ({ actions; notes } : V1.t) =
+      { actions; notes = List.map notes ~f:Note.Stable.V2.of_v1 }
+    ;;
+
+    let to_v1 { actions; notes } : V1.t =
+      { actions; notes = List.filter_map notes ~f:Note.Stable.V2.to_v1 }
+    ;;
+  end
 end
 
-include Stable.V1
+include Stable.V2
 
 let empty = { actions = []; notes = [] }
 let is_empty t = List.is_empty t.actions && List.is_empty t.notes

@@ -69,13 +69,39 @@ module Note : sig
           | No_leader_equity
         [@@deriving bin_io, sexp, compare, equal]
       end
+
+      (** [V1] plus the no-trade band's skips. *)
+      module V2 : sig
+        type t =
+          | Capped of Caps.Reason.Stable.V1.t
+          | No_mark
+          | No_spec
+          | No_leader_equity
+          | Within_band of
+              { gap : Market_data.Size.Stable.V1.t
+              ; band : Usd.Stable.V1.t
+              ; saved : Usd.Stable.V1.t
+              }
+        [@@deriving bin_io, sexp, compare, equal]
+
+        val of_v1 : V1.t -> t
+
+        (** [None] for [Within_band]. *)
+        val to_v1 : t -> V1.t option
+      end
     end
 
-    type t = Stable.V1.t =
+    type t = Stable.V2.t =
       | Capped of Caps.Reason.t
       | No_mark (** no mark price known for the symbol yet *)
       | No_spec (** no lot/tick spec configured for the symbol *)
       | No_leader_equity (** the leader's equity is unknown or not positive *)
+      | Within_band of
+          { gap : Market_data.Size.t (** [target - current], signed *)
+          ; band : Usd.t (** the band's half-width, USD notional *)
+          ; saved : Usd.t (** estimated cost of the rebalance not sent *)
+          }
+      (** the gap to the target is inside the follow's {!No_trade_band}: no order *)
     [@@deriving bin_io, sexp, compare, equal]
   end
 
@@ -87,9 +113,20 @@ module Note : sig
         }
       [@@deriving bin_io, sexp, compare, equal]
     end
+
+    module V2 : sig
+      type t =
+        { symbol : Market_data.Symbol.Stable.V1.t
+        ; reason : Reason.Stable.V2.t
+        }
+      [@@deriving bin_io, sexp, compare, equal]
+
+      val of_v1 : V1.t -> t
+      val to_v1 : t -> V1.t option
+    end
   end
 
-  type t = Stable.V1.t =
+  type t = Stable.V2.t =
     { symbol : Market_data.Symbol.t
     ; reason : Reason.t
     }
@@ -104,9 +141,23 @@ module Stable : sig
       }
     [@@deriving bin_io, sexp, compare, equal]
   end
+
+  (** Notes may say [Within_band]. *)
+  module V2 : sig
+    type t =
+      { actions : Action.Stable.V1.t list
+      ; notes : Note.Stable.V2.t list
+      }
+    [@@deriving bin_io, sexp, compare, equal]
+
+    val of_v1 : V1.t -> t
+
+    (** Drops [Within_band] notes. *)
+    val to_v1 : t -> V1.t
+  end
 end
 
-type t = Stable.V1.t =
+type t = Stable.V2.t =
   { actions : Action.t list
   ; notes : Note.t list
   }
