@@ -123,7 +123,8 @@ let%expect_test "stable shapes" =
 let%expect_test "band: written only when set, V2 files read with no band" =
   let t = Follower_config.create ~follower ~leader () in
   let v2_text =
-    Sexp.to_string_hum (Follower_config.Stable.V2.sexp_of_t (Follower_config.Stable.V3.to_v2 t))
+    Sexp.to_string_hum
+      (Follower_config.Stable.V2.sexp_of_t (Follower_config.Stable.V3.to_v2 t))
     ^ "\n"
   in
   (* a default follow writes exactly what V2 wrote *)
@@ -131,7 +132,8 @@ let%expect_test "band: written only when set, V2 files read with no band" =
   [%expect {| true |}];
   let banded = { t with band = Some No_trade_band.default } in
   print_string (Follower_config.to_file_contents banded);
-  [%expect {|
+  [%expect
+    {|
     ((follower 0x00000000000000000000000000000000000000f1)
      (leader 0xabcdef0123456789abcdef0123456789abcdef01) (mode Equity_ratio)
      (caps
@@ -147,8 +149,7 @@ let%expect_test "band: written only when set, V2 files read with no band" =
     ~expect:banded;
   print_s
     [%sexp
-      ((ok_exn (Follower_config.of_file_contents v2_text)).band
-       : No_trade_band.t option)];
+      ((ok_exn (Follower_config.of_file_contents v2_text)).band : No_trade_band.t option)];
   [%expect {| () |}];
   print_s
     [%sexp
@@ -163,7 +164,8 @@ let%expect_test "band: written only when set, V2 files read with no band" =
                   }
             })
        : Follower_config.t Or_error.t)];
-  [%expect {|
+  [%expect
+    {|
     (Error
      ("invalid follower config"
       (errors

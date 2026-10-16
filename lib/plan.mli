@@ -100,8 +100,7 @@ module Note : sig
           { gap : Market_data.Size.t (** [target - current], signed *)
           ; band : Usd.t (** the band's half-width, USD notional *)
           ; saved : Usd.t (** estimated cost of the rebalance not sent *)
-          }
-      (** the gap to the target is inside the follow's {!No_trade_band}: no order *)
+          } (** the gap to the target is inside the follow's {!No_trade_band}: no order *)
     [@@deriving bin_io, sexp, compare, equal]
   end
 

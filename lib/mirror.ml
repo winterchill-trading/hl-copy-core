@@ -266,9 +266,9 @@ let target t symbol =
     Some target, List.map reasons ~f:(fun r -> note symbol (Plan.Note.Reason.Capped r))
 ;;
 
-(* The follow's no-trade band between the capped target and the order: the target to
-   trade to, and a [Within_band] note when the band held back an order that would
-   otherwise have gone out. Without a band the target is unchanged. *)
+(* The follow's no-trade band between the capped target and the order: the target to trade
+   to, and a [Within_band] note when the band held back an order that would otherwise have
+   gone out. Without a band the target is unchanged. *)
 let[@inline] apply_band t symbol ~spec ~mark ~current ~target =
   match t.config.band with
   | None -> target, None

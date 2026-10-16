@@ -1,9 +1,9 @@
-(** A no-trade band around the follower's target: rebalance only when the gap between
-    what the follower holds and its capped target costs more to carry than to close.
+(** A no-trade band around the follower's target: rebalance only when the gap between what
+    the follower holds and its capped target costs more to carry than to close.
 
-    The rule is the one-period mean-variance trade-off with transaction costs. With [g] the
-    gap in USD notional ([(target - current) * mark]), [E] the follower's equity, [c] the
-    one-way cost as a fraction of notional ({!cost_bps}: fee plus expected slippage),
+    The rule is the one-period mean-variance trade-off with transaction costs. With [g]
+    the gap in USD notional ([(target - current) * mark]), [E] the follower's equity, [c]
+    the one-way cost as a fraction of notional ({!cost_bps}: fee plus expected slippage),
     [s] the symbol's return volatility over the time a gap stays open ([vol_bps]) and
     [gamma] the risk aversion, a trade [q] (USD) is chosen to minimise
 
@@ -14,8 +14,8 @@
     where the middle term is the quadratic (impact) cost, [eta = 0] for {!Cost_model.t}
     [Proportional]. The solution has closed-form band edges:
 
-    - half-width [h = c E / (gamma s^2)] (USD notional, so [c / (gamma s^2)] as a
-      fraction of equity): inside [|g| <= h] nothing trades;
+    - half-width [h = c E / (gamma s^2)] (USD notional, so [c / (gamma s^2)] as a fraction
+      of equity): inside [|g| <= h] nothing trades;
     - outside it the follower trades [phi (|g| - h)] toward the target, with
       [phi = gamma s^2 / (gamma s^2 + 2 eta)]: to the near band edge under proportional
       costs ([phi = 1]), part of the way under quadratic costs.
@@ -91,8 +91,8 @@ type t = Stable.V1.t =
 [@@deriving bin_io, sexp, compare, equal]
 
 (** Hyperliquid's base taker fee (4.5 bp), 5 bp of slippage, risk aversion 20, 300 bp of
-    volatility (about a day of BTC), proportional costs: a half-width of 5.3% of equity.
-    A starting point to tune, not a recommendation. *)
+    volatility (about a day of BTC), proportional costs: a half-width of 5.3% of equity. A
+    starting point to tune, not a recommendation. *)
 val default : t
 
 (** What is wrong, if anything: non-negative finite costs, positive finite risk aversion
@@ -114,8 +114,8 @@ val step_fraction : t -> float
 module Decision : sig
   type t =
     | Trade of Market_data.Size.t
-    (** the target to trade to (the input target when the band is empty, a close, or
-        no gap) *)
+    (** the target to trade to (the input target when the band is empty, a close, or no
+        gap) *)
     | Skip of
         { gap : Market_data.Size.t (** [target - current], signed *)
         ; band : Usd.t (** the half-width *)

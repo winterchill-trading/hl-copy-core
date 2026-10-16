@@ -144,6 +144,8 @@ let decide t ~cost_bps ~equity ~mark ~current ~target : Decision.t =
       (* Move [phi (|g| - h)] of the [|g|] toward the target, in size units so the
          rounding stays on the size grid. *)
       let fraction = phi *. (gap_usd -. h) /. gap_usd in
-      let move = Float.iround_nearest_exn (fraction *. Float.of_int (Size.to_units gap)) in
+      let move =
+        Float.iround_nearest_exn (fraction *. Float.of_int (Size.to_units gap))
+      in
       Trade Size.(current + of_units move)))
 ;;

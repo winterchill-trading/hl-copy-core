@@ -107,9 +107,8 @@ let validate t =
           "min_order_notional negative"
       ]
     @ List.map (Exec_algo.errors t.algo) ~f:(fun e -> "algo: " ^ e)
-    @ List.map
-        (Option.value_map t.band ~default:[] ~f:No_trade_band.errors)
-        ~f:(fun e -> "band: " ^ e)
+    @ List.map (Option.value_map t.band ~default:[] ~f:No_trade_band.errors) ~f:(fun e ->
+      "band: " ^ e)
   in
   match errors with
   | [] -> Ok ()

@@ -47,7 +47,8 @@ let%expect_test "decisions" =
   (* a 0.004 BTC gap is 400 USD, inside the 528 USD half-width *)
   decide "0.01" "0.014";
   [%expect {| (Skip (gap 0.004) (band 527.77777778) (saved 0.38)) |}];
-  (* 0.01 BTC is 1000 USD: trade to the near edge, 0.00528 (the half-width) short of the target *)
+  (* 0.01 BTC is 1000 USD: trade to the near edge, 0.00528 (the half-width) short of the
+     target *)
   decide "0" "0.01";
   [%expect {| (Trade 0.00472222) |}];
   decide "0.02" "0.01";
@@ -67,7 +68,11 @@ let bps = Float.gen_incl 0. 100.
 
 let%test_unit "the band widens with cost and narrows with risk aversion and volatility" =
   Quickcheck.test
-    (Quickcheck.Generator.tuple4 bps bps (Float.gen_incl 0.1 100.) (Float.gen_incl 1. 1000.))
+    (Quickcheck.Generator.tuple4
+       bps
+       bps
+       (Float.gen_incl 0.1 100.)
+       (Float.gen_incl 1. 1000.))
     ~sexp_of:[%sexp_of: float * float * float * float]
     ~f:(fun (c1, c2, gamma, vol) ->
       let lo, hi = Float.min c1 c2, Float.max c1 c2 in
@@ -81,7 +86,9 @@ let%test_unit "the band widens with cost and narrows with risk aversion and vola
           (h hi));
       let more_vol = { t with vol_bps = vol *. 2. } in
       assert (
-        Float.( <= ) (No_trade_band.half_width more_vol ~cost_bps:hi ~equity:10_000.) (h hi)))
+        Float.( <= )
+          (No_trade_band.half_width more_vol ~cost_bps:hi ~equity:10_000.)
+          (h hi)))
 ;;
 
 let%test_unit "a gap skipped at some cost is skipped at every higher cost" =
