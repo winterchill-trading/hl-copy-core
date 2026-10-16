@@ -11,7 +11,13 @@
 
     [algo] ({!Exec_algo}) is optional in the file and left out when it is [Immediate], so
     files written before it existed read unchanged and a default follow writes the same
-    text as before. *)
+    text as before. [band] ({!No_trade_band}, [Stable.V3]) is optional the same way: a
+    follow without one has no [band] field, and with one it reads
+
+    {v
+ (band ((fee_bps 4.5) (slippage (Fixed_bps 5)) (risk_aversion 20) (vol_bps 300)
+        (cost_model Proportional)))
+    v} *)
 
 open! Core
 
@@ -47,9 +53,33 @@ module Stable : sig
     (** Drops [algo]. *)
     val to_v1 : t -> V1.t
   end
+
+  (** [V2] plus the no-trade band. *)
+  module V3 : sig
+    type t =
+      { follower : Address.Stable.V1.t
+      ; leader : Address.Stable.V1.t
+      ; mode : Scale.Mode.Stable.V1.t
+      ; caps : Caps.Stable.V1.t
+      ; slippage_bps : int
+      ; paused : bool
+      ; algo : Exec_algo.Stable.V1.t
+      ; band : No_trade_band.Stable.V1.t option
+      }
+    [@@deriving bin_io, sexp, compare, equal]
+
+    (** [band = None]. *)
+    val of_v2 : V2.t -> t
+
+    (** Drops [band]. *)
+    val to_v2 : t -> V2.t
+
+    val of_v1 : V1.t -> t
+    val to_v1 : t -> V1.t
+  end
 end
 
-type t = Stable.V2.t =
+type t = Stable.V3.t =
   { follower : Address.t (** the user's account, traded through its agent key *)
   ; leader : Address.t
   ; mode : Scale.Mode.t
@@ -57,6 +87,8 @@ type t = Stable.V2.t =
   ; slippage_bps : int (** IOC limit distance from the reference price *)
   ; paused : bool (** the engine sends nothing for a paused follow; positions are kept *)
   ; algo : Exec_algo.t (** how planned orders are executed; [Immediate] by default *)
+  ; band : No_trade_band.t option
+  (** rebalance only outside a no-trade band; [None] (the default) trades every gap *)
   }
 [@@deriving bin_io, sexp, compare, equal]
 
@@ -68,14 +100,15 @@ val create
   -> ?caps:Caps.t
   -> ?slippage_bps:int
   -> ?algo:Exec_algo.t
+  -> ?band:No_trade_band.t
   -> follower:Address.t
   -> leader:Address.t
   -> unit
   -> t
 
 (** Rejects negative or above-1000 slippage, a non-finite or negative leverage or
-    multiplier, negative caps, an invalid algo ({!Exec_algo.validate}), and a follower
-    equal to the leader. *)
+    multiplier, negative caps, an invalid algo ({!Exec_algo.validate}) or band
+    ({!No_trade_band.validate}), and a follower equal to the leader. *)
 val validate : t -> unit Or_error.t
 
 (** File name for the follow, ["<follower>-<leader>.sexp"]. *)

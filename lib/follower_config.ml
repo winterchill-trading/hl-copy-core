@@ -34,9 +34,37 @@ module Stable = struct
       { follower; leader; mode; caps; slippage_bps; paused }
     ;;
   end
+
+  module V3 = struct
+    type t =
+      { follower : Address.Stable.V1.t
+      ; leader : Address.Stable.V1.t
+      ; mode : Scale.Mode.Stable.V1.t
+      ; caps : Caps.Stable.V1.t
+      ; slippage_bps : int
+      ; paused : bool
+      ; algo : Exec_algo.Stable.V1.t
+           [@sexp.default Exec_algo.default] [@sexp_drop_default.equal]
+      ; band : No_trade_band.Stable.V1.t option [@sexp.option]
+      }
+    [@@deriving bin_io, sexp, compare, equal]
+
+    let of_v2 ({ follower; leader; mode; caps; slippage_bps; paused; algo } : V2.t) =
+      { follower; leader; mode; caps; slippage_bps; paused; algo; band = None }
+    ;;
+
+    let to_v2 { follower; leader; mode; caps; slippage_bps; paused; algo; band = _ }
+      : V2.t
+      =
+      { follower; leader; mode; caps; slippage_bps; paused; algo }
+    ;;
+
+    let of_v1 v1 = of_v2 (V2.of_v1 v1)
+    let to_v1 t = V2.to_v1 (to_v2 t)
+  end
 end
 
-include Stable.V2
+include Stable.V3
 
 let default_slippage_bps = 20
 
@@ -45,11 +73,12 @@ let create
   ?(caps = Caps.none)
   ?(slippage_bps = default_slippage_bps)
   ?(algo = Exec_algo.default)
+  ?band
   ~follower
   ~leader
   ()
   =
-  { follower; leader; mode; caps; slippage_bps; paused = false; algo }
+  { follower; leader; mode; caps; slippage_bps; paused = false; algo; band }
 ;;
 
 let validate t =
@@ -78,6 +107,9 @@ let validate t =
           "min_order_notional negative"
       ]
     @ List.map (Exec_algo.errors t.algo) ~f:(fun e -> "algo: " ^ e)
+    @ List.map
+        (Option.value_map t.band ~default:[] ~f:No_trade_band.errors)
+        ~f:(fun e -> "band: " ^ e)
   in
   match errors with
   | [] -> Ok ()
@@ -112,6 +144,6 @@ let mirror_config t ~specs =
   ; caps = t.caps
   ; slippage_bps = t.slippage_bps
   ; specs
-  ; band = None
+  ; band = t.band
   }
 ;;
