@@ -112,5 +112,6 @@ let mirror_config t ~specs =
   ; caps = t.caps
   ; slippage_bps = t.slippage_bps
   ; specs
+  ; band = None
   }
 ;;

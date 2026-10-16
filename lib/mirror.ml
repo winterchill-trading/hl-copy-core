@@ -36,9 +36,29 @@ module Config = struct
         }
       [@@deriving bin_io, sexp, compare, equal]
     end
+
+    module V2 = struct
+      type t =
+        { follower : int
+        ; mode : Scale.Mode.Stable.V1.t
+        ; caps : Caps.Stable.V1.t
+        ; slippage_bps : int
+        ; specs : Rounding.Spec.Stable.V1.t Symbol_map.t
+        ; band : No_trade_band.Stable.V1.t option [@sexp.option]
+        }
+      [@@deriving bin_io, sexp, compare, equal]
+
+      let of_v1 ({ follower; mode; caps; slippage_bps; specs } : V1.t) =
+        { follower; mode; caps; slippage_bps; specs; band = None }
+      ;;
+
+      let to_v1 { follower; mode; caps; slippage_bps; specs; band = _ } : V1.t =
+        { follower; mode; caps; slippage_bps; specs }
+      ;;
+    end
   end
 
-  include Stable.V1
+  include Stable.V2
 end
 
 module Leader_state = struct
@@ -74,9 +94,54 @@ module Stable = struct
       }
     [@@deriving bin_io, sexp, compare, equal]
   end
+
+  module V2 = struct
+    type t =
+      { config : Config.Stable.V2.t
+      ; leader_equity : Usd.Stable.V1.t
+      ; leader_positions : Size.Stable.V1.t Symbol_map.t
+      ; follower_equity : Usd.Stable.V1.t
+      ; day_start_equity : Usd.Stable.V1.t
+      ; follower_positions : Size.Stable.V1.t Symbol_map.t
+      ; pending : Pending.Stable.V1.t list
+      ; marks : Price.Stable.V1.t Symbol_map.t
+      ; managed : Set.M(Symbol).t
+      ; next_seq : int
+      ; slippage_estimates : float Symbol_map.t [@sexp_drop_if Map.is_empty]
+      }
+    [@@deriving bin_io, sexp, compare, equal]
+
+    let of_v1
+      ({ config
+       ; leader_equity
+       ; leader_positions
+       ; follower_equity
+       ; day_start_equity
+       ; follower_positions
+       ; pending
+       ; marks
+       ; managed
+       ; next_seq
+       } :
+        V1.t)
+      =
+      { config = Config.Stable.V2.of_v1 config
+      ; leader_equity
+      ; leader_positions
+      ; follower_equity
+      ; day_start_equity
+      ; follower_positions
+      ; pending
+      ; marks
+      ; managed
+      ; next_seq
+      ; slippage_estimates = Map.empty (module Symbol)
+      }
+    ;;
+  end
 end
 
-include Stable.V1
+include Stable.V2
 
 let create config =
   { config
@@ -89,6 +154,7 @@ let create config =
   ; marks = Map.empty (module Symbol)
   ; managed = Set.empty (module Symbol)
   ; next_seq = 0
+  ; slippage_estimates = Map.empty (module Symbol)
   }
 ;;
 
@@ -200,12 +266,41 @@ let target t symbol =
     Some target, List.map reasons ~f:(fun r -> note symbol (Plan.Note.Reason.Capped r))
 ;;
 
+(* The follow's no-trade band between the capped target and the order: the target to
+   trade to, and a [Within_band] note when the band held back an order that would
+   otherwise have gone out. Without a band the target is unchanged. *)
+let[@inline] apply_band t symbol ~spec ~mark ~current ~target =
+  match t.config.band with
+  | None -> target, None
+  | Some band ->
+    let cost_bps =
+      No_trade_band.cost_bps band ~estimate:(Map.find t.slippage_estimates symbol)
+    in
+    (match
+       No_trade_band.decide
+         band
+         ~cost_bps
+         ~equity:t.follower_equity
+         ~mark
+         ~current
+         ~target
+     with
+     | Trade target -> target, None
+     | Skip { gap; band; saved } ->
+       let would_trade, _ = Caps.order t.config.caps ~spec ~mark ~current ~target in
+       ( current
+       , Option.map would_trade ~f:(fun _ ->
+           note symbol (Plan.Note.Reason.Within_band { gap; band; saved })) ))
+;;
+
 let plan_symbol t symbol =
   let pos = find_size t.follower_positions symbol in
   let live = live_pending t symbol in
-  match capped_target t symbol ~current:Size.(pos + in_flight live) with
+  let current = Size.(pos + in_flight live) in
+  match capped_target t symbol ~current with
   | Error reason -> t, { Plan.actions = []; notes = [ note symbol reason ] }
   | Ok (spec, mark, target, reasons) ->
+    let target, band_note = apply_band t symbol ~spec ~mark ~current ~target in
     let need = Size.(target - pos) in
     (* Keep in-flight orders, oldest first, while together they move toward the target
        without passing it; cancel the rest. *)
@@ -223,6 +318,7 @@ let plan_symbol t symbol =
       List.map
         (reasons @ Option.to_list why)
         ~f:(fun r -> note symbol (Plan.Note.Reason.Capped r))
+      @ Option.to_list band_note
     in
     let pending =
       List.map t.pending ~f:(fun (p : Pending.t) ->
@@ -283,6 +379,10 @@ let on_leader_position_change t ~symbol ~size ~mark =
 let on_leader_equity t equity = { t with leader_equity = equity }
 let on_follower_equity t equity = { t with follower_equity = equity }
 let on_mark t ~symbol ~mark = { t with marks = Map.set t.marks ~key:symbol ~data:mark }
+
+let on_slippage_estimate t ~symbol ~bps =
+  { t with slippage_estimates = Map.set t.slippage_estimates ~key:symbol ~data:bps }
+;;
 
 let on_follower_fill t (fill : Fill.t) =
   let signed = Fill.signed_size fill in

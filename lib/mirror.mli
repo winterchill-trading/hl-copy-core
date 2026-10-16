@@ -12,6 +12,12 @@
     therefore plans nothing new while earlier orders are still pending. In-flight orders
     that now point the wrong way, or overshoot, are cancelled.
 
+    With a {!No_trade_band} in the config, the capped target first goes through
+    {!No_trade_band.decide} against the position plus in-flight orders: inside the band
+    nothing is ordered (a [Within_band] note says what was held back and the cost saved),
+    outside it the order goes to the band edge (or part of the way, for quadratic costs).
+    A leader close is copied in full.
+
     Symbols are only traded once the leader has held them ("managed" symbols), so
     positions the follower holds on its own in other symbols are never touched. Leader
     equity changes do not trigger trades by themselves; they apply from the next position
@@ -58,14 +64,34 @@ module Config : sig
         }
       [@@deriving bin_io, sexp, compare, equal]
     end
+
+    (** [V1] plus the no-trade band. *)
+    module V2 : sig
+      type t =
+        { follower : int
+        ; mode : Scale.Mode.Stable.V1.t
+        ; caps : Caps.Stable.V1.t
+        ; slippage_bps : int
+        ; specs : Rounding.Spec.Stable.V1.t Symbol_map.t
+        ; band : No_trade_band.Stable.V1.t option
+        }
+      [@@deriving bin_io, sexp, compare, equal]
+
+      (** [band = None]. *)
+      val of_v1 : V1.t -> t
+
+      val to_v1 : t -> V1.t
+    end
   end
 
-  type t = Stable.V1.t =
+  type t = Stable.V2.t =
     { follower : int (** non-negative; the high half of every client order id *)
     ; mode : Scale.Mode.t
     ; caps : Caps.t
     ; slippage_bps : int (** IOC limit distance from the mark *)
     ; specs : Rounding.Spec.t Symbol_map.t (** symbols without a spec are not traded *)
+    ; band : No_trade_band.t option
+    (** [None]: every gap above a lot and the minimum notional trades, as before bands *)
     }
   [@@deriving bin_io, sexp, compare, equal]
 end
@@ -103,9 +129,29 @@ module Stable : sig
       }
     [@@deriving bin_io, sexp, compare, equal]
   end
+
+  (** [V1] with the band in the config and the per-symbol slippage estimates. *)
+  module V2 : sig
+    type t =
+      { config : Config.Stable.V2.t
+      ; leader_equity : Usd.Stable.V1.t
+      ; leader_positions : Market_data.Size.Stable.V1.t Symbol_map.t
+      ; follower_equity : Usd.Stable.V1.t
+      ; day_start_equity : Usd.Stable.V1.t
+      ; follower_positions : Market_data.Size.Stable.V1.t Symbol_map.t
+      ; pending : Pending.Stable.V1.t list
+      ; marks : Market_data.Price.Stable.V1.t Symbol_map.t
+      ; managed : Set.M(Market_data.Symbol).t
+      ; next_seq : int
+      ; slippage_estimates : float Symbol_map.t
+      }
+    [@@deriving bin_io, sexp, compare, equal]
+
+    val of_v1 : V1.t -> t
+  end
 end
 
-type t = Stable.V1.t =
+type t = Stable.V2.t =
   { config : Config.t
   ; leader_equity : Usd.t
   ; leader_positions : Market_data.Size.t Symbol_map.t (** non-zero entries only *)
@@ -116,6 +162,8 @@ type t = Stable.V1.t =
   ; marks : Market_data.Price.t Symbol_map.t
   ; managed : Set.M(Market_data.Symbol).t
   ; next_seq : int (** sequence number of the next client order id *)
+  ; slippage_estimates : float Symbol_map.t
+  (** basis points, from {!on_slippage_estimate}; read by a band with [Impact] slippage *)
   }
 [@@deriving bin_io, sexp, compare, equal]
 
@@ -190,6 +238,12 @@ val on_leader_position_change
 val on_leader_equity : t -> Usd.t -> t
 val on_follower_equity : t -> Usd.t -> t
 val on_mark : t -> symbol:Market_data.Symbol.t -> mark:Market_data.Price.t -> t
+
+(** The expected slippage of a rebalancing order in [symbol] (basis points), for a band
+    with [Impact] slippage; the caller estimates it from the book (execution-algos'
+    [Impact.estimate]). Plans nothing; not a journal {!Event.t}, so a caller that replays
+    must call it from its own journaled inputs. *)
+val on_slippage_estimate : t -> symbol:Market_data.Symbol.t -> bps:float -> t
 
 (** Updates the follower's position, and the pending order with the fill's [cloid] (it is
     dropped once fully filled). Fills of other orders (manual trades) only move the
